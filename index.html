@@ -1,0 +1,2657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Intelligence — Archer PS</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root {
+    --navy: #3b82f6;
+    --navy-mid: #60a5fa;
+    --navy-light: #93c5fd;
+    --orange: #f472b6;
+    --orange-light: #fb7185;
+    --slate: #475569;
+    --slate-light: #94a3b8;
+    --bg: #f0f7ff;
+    --bg-card: #ffffff;
+    --border: #dbeafe;
+    --border-strong: #bfdbfe;
+    --text: #1e3a5f;
+    --text-muted: #64748b;
+    --green: #10b981;
+    --red: #f43f5e;
+    --yellow: #f59e0b;
+    --purple: #a78bfa;
+    --sidebar-w: 260px;
+    --header-h: 56px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  header {
+    height: var(--header-h);
+    background: white;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 12px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 1px 8px rgba(59,130,246,0.08);
+  }
+  .header-logo {
+    width: 28px; height: 28px;
+    background: var(--navy);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: white; font-size: 14px; letter-spacing: -1px;
+  }
+  header h1 { color: var(--text); font-size: 15px; font-weight: 700; letter-spacing: 0.3px; }
+  header h1 span { color: var(--navy); }
+  .header-spacer { flex: 1; }
+  .api-key-btn {
+    background: var(--bg);
+    border: 1px solid var(--border-strong);
+    color: var(--slate);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .api-key-btn:hover { background: var(--border); }
+
+  /* ── LAYOUT ── */
+  .app-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  aside {
+    width: var(--sidebar-w);
+    background: white;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .sidebar-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--slate-light);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 16px 16px 6px;
+  }
+  .new-project-btn {
+    margin: 8px 12px;
+    background: var(--navy);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    width: calc(100% - 24px);
+    text-align: left;
+    display: flex; align-items: center; gap: 8px;
+    transition: background 0.15s;
+  }
+  .new-project-btn:hover { background: var(--navy-mid); }
+  .project-list { flex: 1; overflow-y: auto; padding: 4px 8px 12px; }
+  .project-item {
+    padding: 9px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    color: var(--slate);
+    font-size: 13px;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 2px;
+  }
+  .project-item:hover { background: var(--bg); color: var(--text); }
+  .project-item.active { background: #eff6ff; color: var(--navy); border-left: 3px solid var(--navy); font-weight: 600; }
+  .project-item .proj-icon { font-size: 16px; flex-shrink: 0; }
+  .project-item .proj-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .project-item .proj-badge {
+    font-size: 10px;
+    background: var(--border);
+    color: var(--slate);
+    padding: 2px 6px;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+  .sidebar-nav { border-top: 1px solid var(--border); padding: 8px; }
+  .nav-item {
+    padding: 8px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    color: var(--slate);
+    font-size: 13px;
+    display: flex; align-items: center; gap: 8px;
+    transition: all 0.15s;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { background: var(--bg); color: var(--navy); font-weight: 600; }
+
+  /* ── MAIN PANEL ── */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── VIEWS ── */
+  .view { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  .view.active { display: flex; }
+
+  /* ── WELCOME VIEW ── */
+  .welcome-view {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 40px; text-align: center; gap: 16px;
+  }
+  .welcome-icon { font-size: 48px; }
+  .welcome-view h2 { font-size: 22px; color: var(--navy); }
+  .welcome-view p { color: var(--text-muted); max-width: 380px; line-height: 1.6; font-size: 14px; }
+
+  /* ── PROJECT VIEW ── */
+  .project-header {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+  }
+  .project-header h2 { font-size: 16px; color: var(--navy); font-weight: 700; }
+  .project-header .proj-type-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 12px;
+    background: var(--navy);
+    color: white;
+  }
+  .proj-type-badge.evolv { background: var(--orange-light); }
+  .proj-type-badge.docgov { background: var(--purple); }
+  .proj-type-badge.all { background: linear-gradient(90deg, var(--navy), var(--purple)); }
+  .project-header-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn-sm {
+    padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1px solid var(--border); background: white;
+    color: var(--slate); transition: all 0.15s; display: flex; align-items: center; gap: 5px;
+  }
+  .btn-sm:hover { background: var(--bg); border-color: var(--border-strong); }
+  .btn-sm.primary { background: var(--navy); color: white; border-color: var(--navy); }
+  .btn-sm.primary:hover { background: var(--navy-mid); }
+  .btn-sm.orange { background: var(--navy); color: white; border-color: var(--navy); }
+  .btn-sm.orange:hover { background: var(--navy-mid); }
+  .btn-sm.danger { color: var(--red); border-color: #fecaca; }
+  .btn-sm.danger:hover { background: #fef2f2; }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: white;
+    padding: 0 24px;
+    flex-shrink: 0;
+  }
+  .tab {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--navy); border-bottom-color: var(--navy); font-weight: 600; }
+
+  /* ── TAB CONTENT ── */
+  .tab-content { display: none; flex: 1; overflow-y: auto; padding: 20px 24px; }
+  .tab-content.active { display: block; }
+
+  /* ── SESSIONS TAB ── */
+  .session-controls {
+    display: flex; gap: 8px; margin-bottom: 16px; align-items: center;
+  }
+  .session-controls input, .session-controls select {
+    padding: 7px 11px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px; color: var(--text); background: white;
+  }
+  .session-controls input { flex: 1; }
+  .session-list { display: flex; flex-direction: column; gap: 8px; }
+  .session-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .session-card:hover { border-color: var(--navy-light); box-shadow: 0 2px 8px rgba(15,37,69,0.08); }
+  .session-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .session-type-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .session-card-title { font-weight: 600; font-size: 14px; flex: 1; }
+  .session-card-date { font-size: 11px; color: var(--text-muted); }
+  .session-card-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 12px; }
+  .session-card-summary { font-size: 13px; color: var(--slate); margin-top: 6px; line-height: 1.5; }
+  .session-type-badge {
+    font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  /* ── DOCUMENT TAB ── */
+  .doc-drop-zone {
+    border: 2px dashed var(--border-strong);
+    border-radius: 10px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 16px;
+    background: white;
+  }
+  .doc-drop-zone:hover, .doc-drop-zone.drag-over {
+    border-color: var(--orange);
+    background: #fff7ed;
+  }
+  .doc-drop-zone p { font-size: 14px; color: var(--text-muted); margin-top: 8px; }
+  .doc-drop-zone .drop-icon { font-size: 32px; }
+  .doc-list { display: flex; flex-direction: column; gap: 8px; }
+  .doc-item {
+    background: white; border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .doc-icon { font-size: 22px; }
+  .doc-info { flex: 1; }
+  .doc-name { font-size: 13px; font-weight: 600; }
+  .doc-meta { font-size: 11px; color: var(--text-muted); }
+  .doc-actions { display: flex; gap: 6px; }
+
+  /* ── ARTIFACTS TAB ── */
+  .artifact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .artifact-generate-card {
+    background: white; border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+    cursor: pointer; transition: all 0.15s; text-align: center;
+  }
+  .artifact-generate-card:hover { border-color: var(--orange); box-shadow: 0 2px 10px rgba(232,97,10,0.1); }
+  .artifact-generate-card .art-icon { font-size: 28px; margin-bottom: 8px; }
+  .artifact-generate-card h4 { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .artifact-generate-card p { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+  .artifact-results { display: flex; flex-direction: column; gap: 10px; }
+  .artifact-result-card {
+    background: white; border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+  .artifact-result-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .artifact-result-header h4 { flex: 1; font-size: 13px; font-weight: 700; }
+  .artifact-result-body { padding: 14px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+  .artifact-result-body.xml-preview { font-family: monospace; font-size: 11px; background: #f8fafc; }
+
+  /* ── ANALYSIS TAB ── */
+  .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .analysis-card {
+    background: white; border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .analysis-card:hover { border-color: var(--navy-light); }
+  .analysis-card h4 { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .analysis-card p { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+  /* ── SESSION DETAIL MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: 12px;
+    width: 100%; max-width: 680px; max-height: 90vh;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .modal-header h3 { flex: 1; font-size: 15px; font-weight: 700; color: var(--navy); }
+  .modal-close {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--bg); border: 1px solid var(--border);
+    cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center;
+  }
+  .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+  .modal-footer {
+    padding: 12px 20px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px; justify-content: flex-end;
+  }
+  .field-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px; }
+  .field-value { font-size: 13px; color: var(--text); line-height: 1.6; margin-bottom: 14px; }
+  .field-input, .field-textarea, .field-select {
+    width: 100%; padding: 8px 11px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 13px; font-family: inherit;
+    color: var(--text); transition: border-color 0.15s;
+  }
+  .field-textarea { min-height: 80px; resize: vertical; }
+  .field-input:focus, .field-textarea:focus, .field-select:focus {
+    outline: none; border-color: var(--navy-light);
+  }
+  .field-group { margin-bottom: 14px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ── AI OUTPUT AREA ── */
+  .ai-output {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px; font-size: 13px;
+    line-height: 1.7; color: var(--text); white-space: pre-wrap;
+    max-height: 400px; overflow-y: auto; margin-top: 8px;
+  }
+  .ai-output.loading { color: var(--text-muted); font-style: italic; }
+  .ai-output.error { color: var(--red); }
+
+  /* ── RISK FLAGS ── */
+  .risk-item {
+    display: flex; gap: 10px; padding: 10px 12px;
+    border-radius: 8px; margin-bottom: 6px; font-size: 13px;
+    border: 1px solid;
+  }
+  .risk-item.high { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+  .risk-item.medium { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+  .risk-item.low { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+
+  /* ── ACTION ITEMS TAB ── */
+  .action-controls {
+    display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;
+  }
+  .action-controls input, .action-controls select {
+    padding: 7px 11px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px; color: var(--text); background: white;
+  }
+  .action-controls input { flex: 1; min-width: 160px; }
+  .action-table {
+    background: white; border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+  .action-table-header {
+    display: grid; grid-template-columns: 32px 1fr 130px 110px 100px 140px 56px;
+    gap: 0; background: var(--bg); border-bottom: 1px solid var(--border);
+    padding: 8px 12px; font-size: 11px; font-weight: 700;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px;
+  }
+  .action-row {
+    display: grid; grid-template-columns: 32px 1fr 130px 110px 100px 140px 56px;
+    gap: 0; padding: 10px 12px; border-bottom: 1px solid var(--border);
+    align-items: center; font-size: 13px; transition: background 0.1s;
+  }
+  .action-row:last-child { border-bottom: none; }
+  .action-row:hover { background: var(--bg); }
+  .action-row.done { opacity: 0.5; }
+  .action-row.done .action-text { text-decoration: line-through; }
+  .action-text { color: var(--text); line-height: 1.4; padding-right: 8px; }
+  .action-assignee-cell input, .action-due-cell input, .action-status-cell select {
+    width: 100%; border: 1px solid transparent; border-radius: 5px;
+    padding: 3px 6px; font-size: 12px; font-family: inherit;
+    background: transparent; color: var(--text); cursor: pointer;
+  }
+  .action-assignee-cell input:hover, .action-due-cell input:hover,
+  .action-status-cell select:hover { border-color: var(--border-strong); background: white; }
+  .action-assignee-cell input:focus, .action-due-cell input:focus,
+  .action-status-cell select:focus { outline: none; border-color: var(--navy); background: white; }
+  .status-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .status-badge.open { background: #dbeafe; color: #1d4ed8; }
+  .status-badge.in-progress { background: #fef9c3; color: #854d0e; }
+  .status-badge.done { background: #dcfce7; color: #166534; }
+  .action-del-btn {
+    background: none; border: none; cursor: pointer; font-size: 14px;
+    color: var(--slate-light); padding: 2px 4px; border-radius: 4px; transition: all 0.15s;
+  }
+  .action-del-btn:hover { color: var(--red); background: #fef2f2; }
+  .add-action-row {
+    display: grid; grid-template-columns: 32px 1fr 130px 110px 100px 140px 56px;
+    gap: 0; padding: 8px 12px; border-top: 2px dashed var(--border);
+    align-items: center;
+  }
+  .add-action-row input, .add-action-row select {
+    border: 1px solid var(--border); border-radius: 5px;
+    padding: 5px 7px; font-size: 12px; font-family: inherit;
+    color: var(--text); width: 100%;
+  }
+  .add-action-row input:focus, .add-action-row select:focus {
+    outline: none; border-color: var(--navy);
+  }
+  .action-summary-bar {
+    display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .action-stat {
+    background: white; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; font-size: 12px; color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .action-stat strong { font-size: 18px; color: var(--text); font-weight: 700; }
+
+  /* ── DIGEST ── */
+  .digest-section { margin-bottom: 20px; }
+  .digest-section h3 { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+  .digest-session-block { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+  .digest-session-block h4 { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom:4px; display:flex; align-items:center; gap:8px; }
+  .digest-session-block p { font-size: 13px; color: var(--slate); line-height: 1.6; }
+  .action-notes-cell {
+    font-size: 11px; color: var(--text-muted); cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    padding: 3px 6px; border-radius: 5px; border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  .action-notes-cell:hover { border-color: var(--border-strong); background: white; color: var(--text); }
+  .action-notes-cell.has-notes { color: var(--navy); font-weight: 500; }
+
+  /* ── USER STORIES ── */
+  .story-summary-bar { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+  .story-list { display: flex; flex-direction: column; gap: 8px; }
+  .story-card {
+    background: white; border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; cursor: pointer; transition: all 0.15s;
+  }
+  .story-card:hover { border-color: var(--navy-light); box-shadow: 0 2px 8px rgba(59,130,246,0.1); }
+  .story-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .story-id-tag { font-size: 11px; font-weight: 700; color: var(--navy); background: #eff6ff; padding: 2px 8px; border-radius: 6px; }
+  .story-card-title { font-weight: 600; font-size: 13px; flex: 1; color: var(--text); }
+  .priority-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .priority-badge.high { background: #fee2e2; color: #b91c1c; }
+  .priority-badge.medium { background: #fef9c3; color: #854d0e; }
+  .priority-badge.low { background: #dcfce7; color: #166534; }
+  .story-status-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.4px; background: var(--border); color: var(--slate); }
+  .story-status-badge.approved { background: #dcfce7; color: #166534; }
+  .story-status-badge.implemented { background: #dbeafe; color: #1d4ed8; }
+  .story-status-badge.in-review { background: #fef9c3; color: #854d0e; }
+  .story-card-body { font-size: 13px; color: var(--slate); line-height: 1.6; }
+  .story-card-area { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+  /* ── LOADING SPINNER ── */
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%;
+    animation: spin 0.7s linear infinite; vertical-align: middle;
+  }
+  .spinner.dark {
+    border-color: rgba(0,0,0,0.15); border-top-color: var(--navy);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── EMPTY STATES ── */
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+  .empty-state .es-icon { font-size: 36px; margin-bottom: 10px; }
+  .empty-state h4 { font-size: 14px; font-weight: 600; color: var(--slate); margin-bottom: 6px; }
+  .empty-state p { font-size: 13px; line-height: 1.5; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 20px; right: 20px;
+    background: var(--navy); color: white; padding: 10px 16px;
+    border-radius: 8px; font-size: 13px; font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 9999;
+    transform: translateY(80px); opacity: 0; transition: all 0.25s;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: var(--green); }
+  .toast.error { background: var(--red); }
+
+  /* ── SECTION DIVIDER ── */
+  .section-title {
+    font-size: 12px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.8px;
+    margin: 20px 0 10px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-logo">PI</div>
+  <h1>Project <span>Intelligence</span></h1>
+  <div class="header-spacer"></div>
+  <button class="api-key-btn" onclick="openApiKeyModal()">⚙ API Key</button>
+</header>
+
+<div class="app-body">
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="sidebar-section-label">Projects</div>
+    <button class="new-project-btn" onclick="openNewProjectModal()">
+      <span>＋</span> New Project
+    </button>
+    <div class="project-list" id="projectList"></div>
+    <div class="sidebar-nav">
+      <div class="nav-item" onclick="showView('allActions')">
+        <span>✓</span> All Action Items
+      </div>
+      <div class="nav-item" onclick="showView('allRisks')">
+        <span>⚑</span> Risk Register
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <!-- WELCOME -->
+    <div class="view active" id="view-welcome">
+      <div class="welcome-view">
+        <div class="welcome-icon">🏗</div>
+        <h2>Archer PS Project Intelligence</h2>
+        <p>Create a project to start capturing sessions, uploading requirements documents, and generating artifacts like project plans, RACI matrices, and workflow diagrams.</p>
+      </div>
+    </div>
+
+    <!-- PROJECT VIEW -->
+    <div class="view" id="view-project">
+      <div class="project-header">
+        <h2 id="projectHeaderName"></h2>
+        <span id="projectHeaderType" class="proj-type-badge"></span>
+        <div class="project-header-actions">
+          <button class="btn-sm" onclick="openNewSessionModal()">＋ New Session</button>
+          <button class="btn-sm danger" onclick="deleteCurrentProject()">🗑</button>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('sessions', this)">Sessions</div>
+        <div class="tab" onclick="switchTab('stories', this)">User Stories</div>
+        <div class="tab" onclick="switchTab('actions', this)">Action Items</div>
+        <div class="tab" onclick="switchTab('documents', this)">Documents</div>
+        <div class="tab" onclick="switchTab('artifacts', this)">Generate Artifacts</div>
+        <div class="tab" onclick="switchTab('analysis', this)">Analysis</div>
+        <div class="tab" onclick="switchTab('digest', this)">Meeting Digest</div>
+      </div>
+
+      <!-- SESSIONS TAB -->
+      <div class="tab-content active" id="tab-sessions">
+        <div class="session-controls">
+          <input type="text" id="sessionSearch" placeholder="Search sessions…" oninput="renderSessions()">
+          <select id="sessionTypeFilter" onchange="renderSessions()">
+            <option value="">All types</option>
+            <option value="kickoff">Kick-off</option>
+            <option value="requirements">Requirements</option>
+            <option value="design">Design</option>
+            <option value="status">Status Update</option>
+            <option value="review">Review</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="session-list" id="sessionList"></div>
+      </div>
+
+      <!-- USER STORIES TAB -->
+      <div class="tab-content" id="tab-stories">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <p style="font-size:13px;color:var(--text-muted);flex:1">Capture user stories to drive configuration specs, workflow diagrams, access control models, and reporting/notification specs.</p>
+          <button class="btn-sm orange" onclick="openGenerateFromDocsModal()" id="genFromDocsBtnTab">📄 Generate from Documents</button>
+          <button class="btn-sm orange" onclick="openParseStoriesModal()">🧠 Parse Stories</button>
+          <button class="btn-sm" onclick="openNewStoryModal()">＋ Add Story</button>
+        </div>
+        <div class="story-summary-bar" id="storySummaryBar"></div>
+        <div class="session-controls">
+          <input type="text" id="storySearch" placeholder="Search user stories…" oninput="renderStories()">
+          <select id="storyStatusFilter" onchange="renderStories()">
+            <option value="">All statuses</option>
+            <option value="draft">Draft</option>
+            <option value="in-review">In Review</option>
+            <option value="approved">Approved</option>
+            <option value="implemented">Implemented</option>
+          </select>
+          <select id="storyPriorityFilter" onchange="renderStories()">
+            <option value="">All priorities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="story-list" id="storyList"></div>
+      </div>
+
+      <!-- ACTION ITEMS TAB -->
+      <div class="tab-content" id="tab-actions">
+        <div class="action-summary-bar" id="actionSummaryBar"></div>
+        <div class="action-controls">
+          <input type="text" id="actionSearch" placeholder="Search action items…" oninput="renderActionItems()">
+          <select id="actionStatusFilter" onchange="renderActionItems()">
+            <option value="">All statuses</option>
+            <option value="open">Open</option>
+            <option value="in-progress">In Progress</option>
+            <option value="done">Done</option>
+          </select>
+          <select id="actionAssigneeFilter" onchange="renderActionItems()">
+            <option value="">All assignees</option>
+          </select>
+          <button class="btn-sm orange" onclick="extractActionsFromSessions()" id="extractActionsBtn">🧠 Extract from Sessions</button>
+          <button class="btn-sm" onclick="exportActionItemsXlsx()">⬇ Export Excel</button>
+        </div>
+        <div class="action-table">
+          <div class="action-table-header">
+            <div></div>
+            <div>Action Item</div>
+            <div>Assigned To</div>
+            <div>Due Date</div>
+            <div>Status</div>
+            <div>Notes</div>
+            <div></div>
+          </div>
+          <div id="actionItemsList"></div>
+          <div class="add-action-row">
+            <div></div>
+            <input type="text" id="newActionText" placeholder="＋ Add action item…" onkeydown="if(event.key==='Enter')addActionItem()">
+            <input type="text" id="newActionAssignee" placeholder="Assignee">
+            <input type="date" id="newActionDue">
+            <select id="newActionStatus">
+              <option value="open">Open</option>
+              <option value="in-progress">In Progress</option>
+              <option value="done">Done</option>
+            </select>
+            <input type="text" id="newActionNotes" placeholder="Notes…">
+            <button class="btn-sm primary" onclick="addActionItem()" style="padding:4px 10px;font-size:12px">Add</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MEETING DIGEST TAB -->
+      <div class="tab-content" id="tab-digest">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <p style="font-size:13px;color:var(--text-muted);flex:1">A consolidated summary of all sessions — decisions, themes, open items, and progress narrative.</p>
+          <button class="btn-sm orange" onclick="generateDigest()" id="digestBtn">🧠 Generate Digest</button>
+          <button class="btn-sm" onclick="copyDigest()" id="digestCopyBtn" style="display:none">📋 Copy</button>
+        </div>
+        <div id="digestOutput"></div>
+      </div>
+
+      <!-- DOCUMENTS TAB -->
+      <div class="tab-content" id="tab-documents">
+        <div class="doc-drop-zone" id="docDropZone" onclick="document.getElementById('docFileInput').click()" ondragover="handleDragOver(event)" ondrop="handleFileDrop(event)" ondragleave="this.classList.remove('drag-over')">
+          <div class="drop-icon">📎</div>
+          <p><strong>Drop files here</strong> or click to browse</p>
+          <p style="font-size:12px;margin-top:4px">Supports PDF, Word (.docx), .vtt transcripts, SOW/contracts</p>
+        </div>
+        <input type="file" id="docFileInput" style="display:none" multiple accept=".pdf,.docx,.doc,.vtt,.txt" onchange="handleFileSelect(event)">
+        <div class="doc-list" id="docList"></div>
+      </div>
+
+      <!-- ARTIFACTS TAB -->
+      <div class="tab-content" id="tab-artifacts">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">AI generates artifacts from your sessions and uploaded documents. The more context you add, the better the output.</p>
+        <div class="artifact-grid">
+          <div class="artifact-generate-card" onclick="generateArtifact('project-plan')">
+            <div class="art-icon">📋</div>
+            <h4>Project Plan</h4>
+            <p>Phases, milestones, tasks, and timeline — exports to Excel</p>
+          </div>
+          <div class="artifact-generate-card" onclick="generateArtifact('raci')">
+            <div class="art-icon">👥</div>
+            <h4>RACI Matrix</h4>
+            <p>Roles and responsibilities across workstreams — exports to Excel</p>
+          </div>
+          <div class="artifact-generate-card" onclick="generateArtifact('workflow-diagram')">
+            <div class="art-icon">🔀</div>
+            <h4>Workflow Diagram</h4>
+            <p>Process flow in Draw.io XML format — download as .drawio</p>
+          </div>
+          <div class="artifact-generate-card" onclick="generateArtifact('design-doc')">
+            <div class="art-icon">📐</div>
+            <h4>Design Document</h4>
+            <p>Technical design and architecture narrative</p>
+          </div>
+          <div class="artifact-generate-card" onclick="generateArtifact('requirements')">
+            <div class="art-icon">📝</div>
+            <h4>Requirements Summary</h4>
+            <p>Structured functional and non-functional requirements</p>
+          </div>
+          <div class="artifact-generate-card" onclick="generateArtifact('traceability')">
+            <div class="art-icon">🔗</div>
+            <h4>Traceability Matrix</h4>
+            <p>Map requirements to design decisions and deliverables</p>
+          </div>
+        </div>
+        <div class="section-title" style="margin-top:24px">User Story-Driven Artifacts</div>
+        <div class="artifact-grid">
+          <div class="artifact-generate-card" onclick="generateArtifact('config-spec')">
+            <div class="art-icon">⚙</div>
+            <h4>Configuration Specification</h4>
+            <p>Field-level Archer config: types, calculated fields, DDEs, workflow rules — exports to Excel</p>
+          </div>
+          <div class="artifact-generate-card" onclick="generateArtifact('app-diagram')">
+            <div class="art-icon">🗂</div>
+            <h4>Archer Application Diagram</h4>
+            <p>Application/questionnaire relationships and cross-references — Draw.io format</p>
+          </div>
+          <div class="artifact-generate-card" onclick="generateArtifact('integration-diagram')">
+            <div class="art-icon">🔌</div>
+            <h4>Integration Diagram</h4>
+            <p>System-to-system data flow and integration points — Draw.io format</p>
+          </div>
+          <div class="artifact-generate-card" onclick="generateArtifact('access-control')">
+            <div class="art-icon">🔐</div>
+            <h4>Access Control Model</h4>
+            <p>Roles, groups, and record permissions mapped to stories — exports to Excel</p>
+          </div>
+          <div class="artifact-generate-card" onclick="generateArtifact('reporting-spec')">
+            <div class="art-icon">📊</div>
+            <h4>Reporting &amp; Dashboard Spec</h4>
+            <p>Reports and dashboards implied by user stories — exports to Excel</p>
+          </div>
+          <div class="artifact-generate-card" onclick="generateArtifact('notification-spec')">
+            <div class="art-icon">🔔</div>
+            <h4>Notification Specification</h4>
+            <p>Triggers, recipients, and conditions for notifications — exports to Excel</p>
+          </div>
+        </div>
+        <div id="artifactResults" class="artifact-results"></div>
+      </div>
+
+      <!-- ANALYSIS TAB -->
+      <div class="tab-content" id="tab-analysis">
+        <div class="analysis-grid">
+          <div class="analysis-card" onclick="runAnalysis('summary')">
+            <h4>🧠 Project Summary</h4>
+            <p>AI overview of project scope, status, and key context from all sessions and documents</p>
+          </div>
+          <div class="analysis-card" onclick="runAnalysis('risks')">
+            <h4>⚑ Risk Flags</h4>
+            <p>Identify risks, blockers, and open issues surfaced across sessions</p>
+          </div>
+          <div class="analysis-card" onclick="runAnalysis('actions')">
+            <h4>✓ Action Items</h4>
+            <p>Extract all open action items and decisions from sessions</p>
+          </div>
+          <div class="analysis-card" onclick="runAnalysis('gaps')">
+            <h4>🔍 Requirements Gaps</h4>
+            <p>Identify missing, ambiguous, or conflicting requirements</p>
+          </div>
+          <div class="analysis-card" onclick="runAnalysis('stakeholders')">
+            <h4>🤝 Stakeholder Map</h4>
+            <p>Map stakeholders, their roles, and areas of concern</p>
+          </div>
+          <div class="analysis-card" onclick="runAnalysis('decisions')">
+            <h4>📌 Decision Log</h4>
+            <p>Capture key decisions and their rationale from meeting sessions</p>
+          </div>
+        </div>
+        <div id="analysisOutput"></div>
+      </div>
+    </div>
+
+    <!-- ALL ACTION ITEMS VIEW -->
+    <div class="view" id="view-allActions">
+      <div class="project-header">
+        <h2>All Action Items</h2>
+        <div class="project-header-actions">
+          <button class="btn-sm orange" onclick="runGlobalAnalysis('actions')">🔄 Refresh</button>
+        </div>
+      </div>
+      <div class="tab-content active" style="display:block">
+        <div id="globalActionsOutput">
+          <div class="empty-state"><div class="es-icon">✓</div><h4>No action items yet</h4><p>Add sessions to your projects and run Action Items analysis.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RISK REGISTER VIEW -->
+    <div class="view" id="view-allRisks">
+      <div class="project-header">
+        <h2>Risk Register</h2>
+        <div class="project-header-actions">
+          <button class="btn-sm orange" onclick="runGlobalAnalysis('risks')">🔄 Refresh</button>
+        </div>
+      </div>
+      <div class="tab-content active" style="display:block">
+        <div id="globalRisksOutput">
+          <div class="empty-state"><div class="es-icon">⚑</div><h4>No risks logged yet</h4><p>Add sessions to your projects and run Risk Flags analysis.</p></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── MODALS ── -->
+
+<!-- API KEY MODAL -->
+<div class="modal-overlay" id="apiKeyModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3>Anthropic API Key</h3>
+      <button class="modal-close" onclick="closeModal('apiKeyModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <div class="field-label">API Key</div>
+        <input class="field-input" type="password" id="apiKeyInput" placeholder="sk-ant-…">
+        <p style="font-size:12px;color:var(--text-muted);margin-top:6px">Stored locally in your browser. Never sent anywhere except Anthropic's API.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="closeModal('apiKeyModal')">Cancel</button>
+      <button class="btn-sm primary" onclick="saveApiKey()">Save Key</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW PROJECT MODAL -->
+<div class="modal-overlay" id="newProjectModal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3>New Project</h3>
+      <button class="modal-close" onclick="closeModal('newProjectModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <div class="field-label">Project Name</div>
+        <input class="field-input" id="newProjName" placeholder="e.g. NLG Evolv Implementation">
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <div class="field-label">Client</div>
+          <input class="field-input" id="newProjClient" placeholder="NLG, Manulife, Pfizer…">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Project Type</div>
+          <select class="field-select" id="newProjType">
+            <option value="archer">Archer Platform</option>
+            <option value="evolv">Archer Evolv</option>
+            <option value="docgov">Document Governance</option>
+            <option value="archer-evolv">Archer + Evolv</option>
+            <option value="archer-docgov">Archer + Doc Governance</option>
+            <option value="evolv-docgov">Evolv + Doc Governance</option>
+            <option value="all">Archer + Evolv + Doc Governance</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Description / Scope</div>
+        <textarea class="field-textarea" id="newProjDesc" placeholder="Brief description of the project scope and goals…"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <div class="field-label">Start Date</div>
+          <input class="field-input" type="date" id="newProjStart">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Target Go-Live</div>
+          <input class="field-input" type="date" id="newProjEnd">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="closeModal('newProjectModal')">Cancel</button>
+      <button class="btn-sm primary" onclick="createProject()">Create Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW SESSION MODAL -->
+<div class="modal-overlay" id="newSessionModal">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <h3>New Session</h3>
+      <button class="modal-close" onclick="closeModal('newSessionModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <div class="field-label">Session Title</div>
+        <input class="field-input" id="sessTitle" placeholder="e.g. Kick-off Meeting / Requirements Workshop">
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <div class="field-label">Session Type</div>
+          <select class="field-select" id="sessType">
+            <option value="kickoff">Kick-off</option>
+            <option value="requirements">Requirements</option>
+            <option value="design">Design</option>
+            <option value="status">Status Update</option>
+            <option value="review">Review</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Date</div>
+          <input class="field-input" type="date" id="sessDate">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Attendees</div>
+        <input class="field-input" id="sessAttendees" placeholder="Names or roles, comma-separated">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Notes / Transcript</div>
+        <textarea class="field-textarea" id="sessNotes" style="min-height:140px" placeholder="Paste meeting notes, paste .vtt transcript content, or describe what was discussed…"></textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <label style="font-size:12px;color:var(--text-muted)">Or upload a .vtt transcript:</label>
+        <input type="file" id="sessVttInput" accept=".vtt,.txt" style="font-size:12px">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="closeModal('newSessionModal')">Cancel</button>
+      <button class="btn-sm orange" onclick="saveSessionAndSummarize()" id="sessAiBtn">💡 Save & Summarize</button>
+      <button class="btn-sm primary" onclick="saveSession()">Save Notes Only</button>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION DETAIL MODAL -->
+<div class="modal-overlay" id="sessionDetailModal">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <h3 id="sessDetailTitle"></h3>
+      <button class="modal-close" onclick="closeModal('sessionDetailModal')">×</button>
+    </div>
+    <div class="modal-body" id="sessDetailBody"></div>
+    <div class="modal-footer">
+      <button class="btn-sm danger" onclick="deleteSession()">Delete</button>
+      <div style="flex:1"></div>
+      <button class="btn-sm orange" onclick="summarizeSession()" id="sessDetailSumBtn">🧠 Re-summarize</button>
+      <button class="btn-sm primary" onclick="closeModal('sessionDetailModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ARTIFACT DETAIL MODAL -->
+<div class="modal-overlay" id="artifactModal">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-header">
+      <h3 id="artModalTitle"></h3>
+      <button class="modal-close" onclick="closeModal('artifactModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="ai-output" id="artModalBody" style="max-height:55vh"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="copyArtifact()">📋 Copy</button>
+      <button class="btn-sm primary" id="artDownloadBtn" onclick="downloadArtifact()" style="display:none">⬇ Download</button>
+      <button class="btn-sm" onclick="closeModal('artifactModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW USER STORY MODAL -->
+<div class="modal-overlay" id="newStoryModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <h3 id="storyModalTitle">New User Story</h3>
+      <button class="modal-close" onclick="closeModal('newStoryModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <div class="field-label">Story ID</div>
+        <input class="field-input" id="storyIdField" placeholder="e.g. US-001 (auto-generated if blank)">
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <div class="field-label">As a... (Role)</div>
+          <input class="field-input" id="storyRole" placeholder="e.g. Compliance Manager">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Archer Application/Area</div>
+          <input class="field-input" id="storyAppArea" placeholder="e.g. Policy Management">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">I want... (Capability)</div>
+        <textarea class="field-textarea" id="storyWant" style="min-height:50px" placeholder="What the user wants to do"></textarea>
+      </div>
+      <div class="field-group">
+        <div class="field-label">So that... (Benefit)</div>
+        <textarea class="field-textarea" id="storyBenefit" style="min-height:50px" placeholder="Why they want it"></textarea>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Acceptance Criteria</div>
+        <textarea class="field-textarea" id="storyAcceptance" style="min-height:80px" placeholder="One per line…"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <div class="field-label">Priority</div>
+          <select class="field-select" id="storyPriority">
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Status</div>
+          <select class="field-select" id="storyStatus">
+            <option value="draft">Draft</option>
+            <option value="in-review">In Review</option>
+            <option value="approved">Approved</option>
+            <option value="implemented">Implemented</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm danger" id="storyDeleteBtn" onclick="deleteStory()" style="display:none">Delete</button>
+      <div style="flex:1"></div>
+      <button class="btn-sm" onclick="closeModal('newStoryModal')">Cancel</button>
+      <button class="btn-sm primary" onclick="saveStory()">Save Story</button>
+    </div>
+  </div>
+</div>
+
+<!-- GENERATE STORIES FROM DOCUMENTS MODAL -->
+<div class="modal-overlay" id="generateFromDocsModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <h3>Generate Stories from Documents</h3>
+      <button class="modal-close" onclick="closeModal('generateFromDocsModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Select which requirements documents the AI should read to draft user stories. Generated stories land as <strong>Draft</strong> status for your review — nothing is auto-approved.</p>
+      <div class="field-group">
+        <div class="field-label">Documents</div>
+        <div id="genFromDocsList" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Additional context (optional)</div>
+        <textarea class="field-textarea" id="genFromDocsContext" style="min-height:60px" placeholder="Anything specific to focus on, e.g. 'Focus on the Policy Management module only'"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="closeModal('generateFromDocsModal')">Cancel</button>
+      <button class="btn-sm orange" onclick="generateStoriesFromDocs()" id="genFromDocsBtn">🧠 Generate Stories</button>
+    </div>
+  </div>
+</div>
+
+<!-- PARSE STORIES MODAL -->
+<div class="modal-overlay" id="parseStoriesModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <h3>Parse User Stories</h3>
+      <button class="modal-close" onclick="closeModal('parseStoriesModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <div class="field-label">Paste your stories</div>
+        <textarea class="field-textarea" id="parseStoriesInput" style="min-height:220px" placeholder="Paste raw stories — Jira export, Word doc text, bullet list, whatever format. The AI will split them into structured stories with role, capability, benefit, and acceptance criteria where it can find them."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="closeModal('parseStoriesModal')">Cancel</button>
+      <button class="btn-sm orange" onclick="parseUserStories()" id="parseStoriesBtn">🧠 Parse &amp; Add Stories</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACTION NOTES MODAL -->
+<div class="modal-overlay" id="actionNotesModal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h3>Action Item Details</h3>
+      <button class="modal-close" onclick="closeModal('actionNotesModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="field-group">
+        <div class="field-label">Action Item</div>
+        <div class="field-value" id="actionNoteItemText" style="font-weight:600"></div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Notes / Context</div>
+        <textarea class="field-textarea" id="actionNoteText" style="min-height:100px" placeholder="Add context, blockers, or progress notes…"></textarea>
+      </div>
+      <div class="field-group" id="actionNoteSessionRefGroup" style="display:none">
+        <div class="field-label">Source Session</div>
+        <div id="actionNoteSessionRefLink" style="font-size:13px;color:var(--navy);cursor:pointer;text-decoration:underline"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" onclick="closeModal('actionNotesModal')">Cancel</button>
+      <button class="btn-sm primary" onclick="saveActionNotes()">Save Notes</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+let state = {
+  projects: [],
+  currentProjectId: null,
+  currentSessionId: null,
+  currentArtifact: null,
+  currentView: 'welcome'
+};
+
+// ── INIT ──
+function init() {
+  const saved = localStorage.getItem('pi_state');
+  if (saved) { try { state = { ...state, ...JSON.parse(saved) }; } catch(e) {} }
+  const today = new Date().toISOString().split('T')[0];
+  ['newProjStart','sessDate'].forEach(id => { const el = document.getElementById(id); if(el) el.value = today; });
+  renderProjects();
+  if (state.currentProjectId) loadProject(state.currentProjectId);
+  if (!localStorage.getItem('pi_api_key')) setTimeout(openApiKeyModal, 600);
+}
+
+function save() {
+  localStorage.setItem('pi_state', JSON.stringify(state));
+}
+
+// ── API KEY ──
+function openApiKeyModal() {
+  const key = localStorage.getItem('pi_api_key') || '';
+  document.getElementById('apiKeyInput').value = key;
+  openModal('apiKeyModal');
+}
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) return toast('Enter an API key', 'error');
+  localStorage.setItem('pi_api_key', key);
+  closeModal('apiKeyModal');
+  toast('API key saved', 'success');
+}
+function getApiKey() { return localStorage.getItem('pi_api_key') || ''; }
+
+// ── MODALS ──
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── TOAST ──
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(() => el.className = 'toast', 3000);
+}
+
+// ── PROJECTS ──
+function renderProjects() {
+  const list = document.getElementById('projectList');
+  if (!state.projects.length) {
+    list.innerHTML = '<div style="color:rgba(255,255,255,0.3);font-size:12px;padding:10px 12px">No projects yet</div>';
+    return;
+  }
+  list.innerHTML = state.projects.map(p => {
+    const active = p.id === state.currentProjectId ? ' active' : '';
+    const sessCount = (p.sessions || []).length;
+    const icon = projTypeIcon(p.type);
+    return `<div class="project-item${active}" onclick="loadProject('${p.id}')">
+      <span class="proj-icon">${icon}</span>
+      <span class="proj-name">${p.name}</span>
+      ${sessCount ? `<span class="proj-badge">${sessCount}</span>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openNewProjectModal() {
+  document.getElementById('newProjName').value = '';
+  document.getElementById('newProjClient').value = '';
+  document.getElementById('newProjDesc').value = '';
+  document.getElementById('newProjEnd').value = '';
+  document.getElementById('newProjType').value = 'archer';
+  openModal('newProjectModal');
+  setTimeout(() => document.getElementById('newProjName').focus(), 100);
+}
+
+function createProject() {
+  const name = document.getElementById('newProjName').value.trim();
+  if (!name) return toast('Project name is required', 'error');
+  const proj = {
+    id: 'p_' + Date.now(),
+    name,
+    client: document.getElementById('newProjClient').value.trim(),
+    type: document.getElementById('newProjType').value,
+    description: document.getElementById('newProjDesc').value.trim(),
+    startDate: document.getElementById('newProjStart').value,
+    endDate: document.getElementById('newProjEnd').value,
+    sessions: [],
+    documents: [],
+    artifacts: [],
+    createdAt: new Date().toISOString()
+  };
+  state.projects.push(proj);
+  save();
+  closeModal('newProjectModal');
+  renderProjects();
+  loadProject(proj.id);
+  toast('Project created', 'success');
+}
+
+function loadProject(id) {
+  state.currentProjectId = id;
+  save();
+  const proj = getProject();
+  if (!proj) return;
+  document.getElementById('projectHeaderName').textContent = proj.name + (proj.client ? ` — ${proj.client}` : '');
+  const typeBadge = document.getElementById('projectHeaderType');
+  typeBadge.textContent = projTypeLabel(proj.type);
+  typeBadge.className = 'proj-type-badge' + projTypeBadgeClass(proj.type);
+  showView('project');
+  switchTab('sessions', document.querySelector('.tab'));
+  renderSessions();
+  renderDocuments();
+  renderActionItems();
+  renderStories();
+  renderProjects();
+}
+
+function getProject() { return state.projects.find(p => p.id === state.currentProjectId); }
+
+function deleteCurrentProject() {
+  if (!confirm('Delete this project and all its data?')) return;
+  state.projects = state.projects.filter(p => p.id !== state.currentProjectId);
+  state.currentProjectId = null;
+  save();
+  renderProjects();
+  showView('welcome');
+  toast('Project deleted');
+}
+
+// ── VIEWS & TABS ──
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  state.currentView = name;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── SESSIONS ──
+const SESSION_COLORS = {
+  kickoff: '#7c3aed', requirements: '#2563eb', design: '#0891b2',
+  status: '#059669', review: '#d97706', other: '#64748b'
+};
+const SESSION_LABELS = {
+  kickoff: 'Kick-off', requirements: 'Requirements', design: 'Design',
+  status: 'Status', review: 'Review', other: 'Other'
+};
+
+function renderSessions() {
+  const proj = getProject();
+  const list = document.getElementById('sessionList');
+  if (!proj) return;
+  const search = document.getElementById('sessionSearch').value.toLowerCase();
+  const typeFilter = document.getElementById('sessionTypeFilter').value;
+  let sessions = proj.sessions || [];
+  if (search) sessions = sessions.filter(s => s.title.toLowerCase().includes(search) || (s.summary||'').toLowerCase().includes(search));
+  if (typeFilter) sessions = sessions.filter(s => s.type === typeFilter);
+  sessions = [...sessions].sort((a,b) => new Date(b.date) - new Date(a.date));
+  if (!sessions.length) {
+    list.innerHTML = '<div class="empty-state"><div class="es-icon">📅</div><h4>No sessions yet</h4><p>Click "+ New Session" to add a meeting, workshop, or call.</p></div>';
+    return;
+  }
+  list.innerHTML = sessions.map(s => {
+    const color = SESSION_COLORS[s.type] || '#64748b';
+    const label = SESSION_LABELS[s.type] || s.type;
+    const dateStr = s.date ? new Date(s.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    return `<div class="session-card" onclick="openSessionDetail('${s.id}')">
+      <div class="session-card-header">
+        <div class="session-type-dot" style="background:${color}"></div>
+        <div class="session-card-title">${s.title}</div>
+        <span class="session-type-badge" style="background:${color}20;color:${color}">${label}</span>
+        <span class="session-card-date">${dateStr}</span>
+      </div>
+      ${s.attendees ? `<div class="session-card-meta"><span>👥 ${s.attendees}</span></div>` : ''}
+      ${s.summary ? `<div class="session-card-summary">${s.summary.substring(0,200)}${s.summary.length>200?'…':''}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openNewSessionModal() {
+  document.getElementById('sessTitle').value = '';
+  document.getElementById('sessAttendees').value = '';
+  document.getElementById('sessNotes').value = '';
+  document.getElementById('sessVttInput').value = '';
+  document.getElementById('sessDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('sessType').value = 'requirements';
+  openModal('newSessionModal');
+  setTimeout(() => document.getElementById('sessTitle').focus(), 100);
+}
+
+// Handle VTT upload in session modal
+document.getElementById('sessVttInput').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  const cleaned = parseVtt(text);
+  document.getElementById('sessNotes').value = cleaned;
+});
+
+function parseVtt(text) {
+  return text.split('\n').filter(line => {
+    return line.trim() && !line.startsWith('WEBVTT') && !line.match(/^\d+$/) && !line.match(/\d+:\d+:\d+/);
+  }).join(' ').replace(/<[^>]+>/g, '').replace(/\s+/g,' ').trim();
+}
+
+async function saveSessionAndSummarize() {
+  const title = document.getElementById('sessTitle').value.trim();
+  if (!title) return toast('Session title is required', 'error');
+  const notes = document.getElementById('sessNotes').value.trim();
+  const btn = document.getElementById('sessAiBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Summarizing…';
+  const session = buildSessionObj();
+  let summary = '';
+  if (notes) {
+    try { summary = await aiSummarizeSession(session); } catch(e) { toast('AI summary failed — saved without summary', 'error'); }
+  }
+  session.summary = summary;
+  const proj = getProject();
+  proj.sessions = proj.sessions || [];
+  proj.sessions.push(session);
+  save();
+  closeModal('newSessionModal');
+  renderSessions();
+  toast('Session saved' + (summary ? ' with AI summary' : ''), 'success');
+  btn.disabled = false;
+  btn.innerHTML = '💡 Save & Summarize';
+}
+
+function saveSession() {
+  const title = document.getElementById('sessTitle').value.trim();
+  if (!title) return toast('Session title is required', 'error');
+  const session = buildSessionObj();
+  const proj = getProject();
+  proj.sessions = proj.sessions || [];
+  proj.sessions.push(session);
+  save();
+  closeModal('newSessionModal');
+  renderSessions();
+  toast('Session saved', 'success');
+}
+
+function buildSessionObj() {
+  return {
+    id: 's_' + Date.now(),
+    title: document.getElementById('sessTitle').value.trim(),
+    type: document.getElementById('sessType').value,
+    date: document.getElementById('sessDate').value,
+    attendees: document.getElementById('sessAttendees').value.trim(),
+    notes: document.getElementById('sessNotes').value.trim(),
+    summary: '',
+    createdAt: new Date().toISOString()
+  };
+}
+
+function openSessionDetail(sessionId) {
+  const proj = getProject();
+  const sess = proj.sessions.find(s => s.id === sessionId);
+  if (!sess) return;
+  state.currentSessionId = sessionId;
+  document.getElementById('sessDetailTitle').textContent = sess.title;
+  const dateStr = sess.date ? new Date(sess.date + 'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '';
+  const color = SESSION_COLORS[sess.type] || '#64748b';
+  const label = SESSION_LABELS[sess.type] || sess.type;
+  document.getElementById('sessDetailBody').innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center">
+      <span class="session-type-badge" style="background:${color}20;color:${color}">${label}</span>
+      <span style="font-size:12px;color:var(--text-muted)">${dateStr}</span>
+      ${sess.attendees ? `<span style="font-size:12px;color:var(--text-muted)">👥 ${sess.attendees}</span>` : ''}
+    </div>
+    ${sess.summary ? `<div class="field-label">AI Summary</div><div class="ai-output" style="margin-bottom:14px">${sess.summary}</div>` : ''}
+    ${sess.notes ? `<div class="field-label">Notes / Transcript</div><div class="ai-output" style="max-height:300px">${sess.notes}</div>` : '<div class="field-label">Notes</div><div style="color:var(--text-muted);font-size:13px">No notes recorded.</div>'}
+  `;
+  openModal('sessionDetailModal');
+}
+
+function deleteSession() {
+  if (!confirm('Delete this session?')) return;
+  const proj = getProject();
+  proj.sessions = proj.sessions.filter(s => s.id !== state.currentSessionId);
+  save();
+  closeModal('sessionDetailModal');
+  renderSessions();
+  toast('Session deleted');
+}
+
+async function summarizeSession() {
+  const proj = getProject();
+  const sess = proj.sessions.find(s => s.id === state.currentSessionId);
+  if (!sess || !sess.notes) return toast('No notes to summarize', 'error');
+  const btn = document.getElementById('sessDetailSumBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner dark"></span> Summarizing…';
+  try {
+    sess.summary = await aiSummarizeSession(sess);
+    save();
+    openSessionDetail(sess.id);
+    toast('Summary updated', 'success');
+  } catch(e) {
+    toast('Summarization failed: ' + e.message, 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '🧠 Re-summarize';
+}
+
+// ── USER STORIES ──
+function getStories() {
+  const proj = getProject();
+  return proj?.userStories || [];
+}
+
+function renderStories() {
+  const proj = getProject();
+  if (!proj) return;
+  const stories = getStories();
+  const search = document.getElementById('storySearch').value.toLowerCase();
+  const statusFilter = document.getElementById('storyStatusFilter').value;
+  const priorityFilter = document.getElementById('storyPriorityFilter').value;
+
+  let filtered = stories;
+  if (search) filtered = filtered.filter(s =>
+    (s.want||'').toLowerCase().includes(search) ||
+    (s.role||'').toLowerCase().includes(search) ||
+    (s.appArea||'').toLowerCase().includes(search) ||
+    (s.id||'').toLowerCase().includes(search)
+  );
+  if (statusFilter) filtered = filtered.filter(s => s.status === statusFilter);
+  if (priorityFilter) filtered = filtered.filter(s => s.priority === priorityFilter);
+
+  const high = stories.filter(s => s.priority === 'high').length;
+  const approved = stories.filter(s => s.status === 'approved' || s.status === 'implemented').length;
+  document.getElementById('storySummaryBar').innerHTML = `
+    <div class="action-stat"><strong>${stories.length}</strong> Total Stories</div>
+    <div class="action-stat"><strong>${high}</strong> High Priority</div>
+    <div class="action-stat"><strong>${approved}</strong> Approved/Implemented</div>
+  `;
+
+  const list = document.getElementById('storyList');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><div class="es-icon">📖</div><h4>${stories.length ? 'No matching stories' : 'No user stories yet'}</h4><p>${stories.length ? 'Try clearing filters.' : 'Click "+ Add Story" or paste a batch with "Parse Stories".'}</p></div>`;
+    return;
+  }
+
+  filtered = [...filtered].sort((a,b) => {
+    const order = {high:0,medium:1,low:2};
+    return (order[a.priority]??1) - (order[b.priority]??1);
+  });
+
+  list.innerHTML = filtered.map(s => {
+    return `<div class="story-card" onclick="openStoryDetail('${s.id}')">
+      <div class="story-card-header">
+        <span class="story-id-tag">${s.storyId || s.id}</span>
+        <span class="story-card-title">As a ${s.role || '[role]'}, I want ${s.want || '[capability]'}</span>
+        <span class="priority-badge ${s.priority}">${s.priority}</span>
+        <span class="story-status-badge ${s.status}">${(s.status||'').replace('-',' ')}</span>
+      </div>
+      <div class="story-card-body">${s.benefit ? 'So that ' + s.benefit : ''}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${s.appArea ? `<div class="story-card-area">🗂 ${s.appArea}</div>` : ''}
+        ${s.sourceDoc ? `<div class="story-card-area">📄 ${s.sourceDoc}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openNewStoryModal() {
+  state.currentStoryId = null;
+  document.getElementById('storyModalTitle').textContent = 'New User Story';
+  document.getElementById('storyDeleteBtn').style.display = 'none';
+  document.getElementById('storyIdField').value = '';
+  document.getElementById('storyRole').value = '';
+  document.getElementById('storyAppArea').value = '';
+  document.getElementById('storyWant').value = '';
+  document.getElementById('storyBenefit').value = '';
+  document.getElementById('storyAcceptance').value = '';
+  document.getElementById('storyPriority').value = 'medium';
+  document.getElementById('storyStatus').value = 'draft';
+  openModal('newStoryModal');
+  setTimeout(() => document.getElementById('storyRole').focus(), 100);
+}
+
+function openStoryDetail(id) {
+  const proj = getProject();
+  const s = (proj.userStories||[]).find(x => x.id === id);
+  if (!s) return;
+  state.currentStoryId = id;
+  document.getElementById('storyModalTitle').textContent = 'Edit User Story';
+  document.getElementById('storyDeleteBtn').style.display = '';
+  document.getElementById('storyIdField').value = s.storyId || '';
+  document.getElementById('storyRole').value = s.role || '';
+  document.getElementById('storyAppArea').value = s.appArea || '';
+  document.getElementById('storyWant').value = s.want || '';
+  document.getElementById('storyBenefit').value = s.benefit || '';
+  document.getElementById('storyAcceptance').value = s.acceptance || '';
+  document.getElementById('storyPriority').value = s.priority || 'medium';
+  document.getElementById('storyStatus').value = s.status || 'draft';
+  openModal('newStoryModal');
+}
+
+function saveStory() {
+  const want = document.getElementById('storyWant').value.trim();
+  if (!want) return toast('"I want..." is required', 'error');
+  const proj = getProject();
+  proj.userStories = proj.userStories || [];
+
+  const data = {
+    storyId: document.getElementById('storyIdField').value.trim() || nextStoryId(proj),
+    role: document.getElementById('storyRole').value.trim(),
+    appArea: document.getElementById('storyAppArea').value.trim(),
+    want,
+    benefit: document.getElementById('storyBenefit').value.trim(),
+    acceptance: document.getElementById('storyAcceptance').value.trim(),
+    priority: document.getElementById('storyPriority').value,
+    status: document.getElementById('storyStatus').value
+  };
+
+  if (state.currentStoryId) {
+    const existing = proj.userStories.find(s => s.id === state.currentStoryId);
+    Object.assign(existing, data);
+  } else {
+    proj.userStories.push({ id: 'us_' + Date.now(), ...data, createdAt: new Date().toISOString() });
+  }
+  save();
+  closeModal('newStoryModal');
+  renderStories();
+  toast('Story saved', 'success');
+}
+
+function nextStoryId(proj) {
+  const count = (proj.userStories||[]).length + 1;
+  return 'US-' + String(count).padStart(3, '0');
+}
+
+function deleteStory() {
+  if (!confirm('Delete this user story?')) return;
+  const proj = getProject();
+  proj.userStories = (proj.userStories||[]).filter(s => s.id !== state.currentStoryId);
+  save();
+  closeModal('newStoryModal');
+  renderStories();
+  toast('Story deleted');
+}
+
+function openParseStoriesModal() {
+  document.getElementById('parseStoriesInput').value = '';
+  openModal('parseStoriesModal');
+}
+
+async function parseUserStories() {
+  const raw = document.getElementById('parseStoriesInput').value.trim();
+  if (!raw) return toast('Paste some stories first', 'error');
+  const btn = document.getElementById('parseStoriesBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner dark"></span> Parsing…';
+  const proj = getProject();
+
+  try {
+    const result = await callAI(
+      `You parse raw user story text (from Jira exports, Word docs, bullet lists, etc.) into structured Archer GRC/Evolv implementation user stories. Return ONLY valid JSON, no markdown.`,
+      `Parse these user stories into structured format:\n\n${raw}\n\nProject context: ${proj.name}, type: ${projTypeLabel(proj.type)}.\n\nReturn JSON array. Infer role/want/benefit even if not in strict "As a/I want/So that" format. Infer Archer application/area if mentioned or implied (e.g. Policy Management, Issues Management, Vendor Risk). If acceptance criteria are present, include them as a single string with line breaks. Default priority to "medium" and status to "draft" unless stated otherwise.
+[{ "role": "...", "want": "...", "benefit": "...", "appArea": "...", "acceptance": "...", "priority": "high|medium|low", "status": "draft|in-review|approved|implemented" }]`
+    );
+    const clean = result.replace(/```json|```/g,'').trim();
+    const stories = JSON.parse(clean);
+    proj.userStories = proj.userStories || [];
+    let added = 0;
+    stories.forEach(s => {
+      if (!s.want) return;
+      proj.userStories.push({
+        id: 'us_' + Date.now() + Math.random(),
+        storyId: nextStoryId(proj),
+        role: s.role || '', want: s.want, benefit: s.benefit || '',
+        appArea: s.appArea || '', acceptance: s.acceptance || '',
+        priority: s.priority || 'medium', status: s.status || 'draft',
+        createdAt: new Date().toISOString()
+      });
+      added++;
+    });
+    save();
+    closeModal('parseStoriesModal');
+    renderStories();
+    toast(`${added} stor${added !== 1 ? 'ies' : 'y'} added`, 'success');
+  } catch(e) {
+    toast('Parsing failed: ' + e.message, 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '🧠 Parse & Add Stories';
+}
+
+// ── GENERATE STORIES FROM DOCUMENTS ──
+function openGenerateFromDocsModal() {
+  const proj = getProject();
+  const docs = proj.documents || [];
+  const listEl = document.getElementById('genFromDocsList');
+  if (!docs.length) {
+    listEl.innerHTML = '<div style="font-size:13px;color:var(--text-muted)">No documents uploaded yet. Add requirements docs in the Documents tab first.</div>';
+  } else {
+    const icons = { pdf: '📄', docx: '📝', doc: '📝', vtt: '🎙', txt: '📃' };
+    listEl.innerHTML = docs.map(d => `
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;cursor:pointer">
+        <input type="checkbox" class="gen-doc-checkbox" value="${d.id}" checked>
+        <span>${icons[d.type]||'📎'} ${d.name}</span>
+      </label>
+    `).join('');
+  }
+  document.getElementById('genFromDocsContext').value = '';
+  openModal('generateFromDocsModal');
+}
+
+async function generateStoriesFromDocs() {
+  const proj = getProject();
+  const checked = Array.from(document.querySelectorAll('.gen-doc-checkbox:checked')).map(c => c.value);
+  if (!checked.length) return toast('Select at least one document', 'error');
+  const selectedDocs = (proj.documents || []).filter(d => checked.includes(d.id));
+  const extraContext = document.getElementById('genFromDocsContext').value.trim();
+
+  const btn = document.getElementById('genFromDocsBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner dark"></span> Reading documents…';
+
+  const pdfDocs = selectedDocs.filter(d => d.b64);
+  const textDocs = selectedDocs.filter(d => d.content).map(d =>
+    `DOCUMENT: ${d.name}\n${d.content.substring(0, 6000)}`
+  ).join('\n\n---\n\n');
+
+  try {
+    const result = await callAI(
+      `You are a senior business analyst who reads requirements documentation (SOWs, requirements specs, business requirements docs) for Archer GRC/Evolv implementations and drafts candidate user stories from them. Return ONLY valid JSON, no markdown.`,
+      `Read the requirements document(s) below and draft user stories that capture the requirements as testable, implementation-ready stories.\n\nProject: ${proj.name} (${projTypeLabel(proj.type)})\n${extraContext ? `Focus area: ${extraContext}\n` : ''}
+${textDocs || 'See attached PDF document(s).'}
+
+Return a JSON array. For each distinct requirement or capability found, draft a user story in "As a [role], I want [capability], so that [benefit]" form. Infer the role from context if not explicit (e.g. Compliance Manager, Policy Owner, System Administrator). Infer the Archer application/area (e.g. Policy Management, Issues Management, Vendor Risk, Third Party Governance) where the document implies it. Write 2-4 acceptance criteria per story based on the document's specificity. Set status to "draft" and priority based on how the document frames it (use "high" for explicit must-haves, "medium" otherwise). Include a "sourceDoc" field naming which document the story was drawn from.
+[{ "role": "...", "want": "...", "benefit": "...", "appArea": "...", "acceptance": "...", "priority": "high|medium|low", "sourceDoc": "document name" }]`,
+      pdfDocs
+    );
+    const clean = result.replace(/```json|```/g,'').trim();
+    const stories = JSON.parse(clean);
+    proj.userStories = proj.userStories || [];
+    let added = 0;
+    stories.forEach(s => {
+      if (!s.want) return;
+      proj.userStories.push({
+        id: 'us_' + Date.now() + Math.random(),
+        storyId: nextStoryId(proj),
+        role: s.role || '', want: s.want, benefit: s.benefit || '',
+        appArea: s.appArea || '', acceptance: s.acceptance || '',
+        priority: s.priority || 'medium', status: 'draft',
+        sourceDoc: s.sourceDoc || '',
+        createdAt: new Date().toISOString()
+      });
+      added++;
+    });
+    save();
+    closeModal('generateFromDocsModal');
+    renderStories();
+    toast(`${added} draft stor${added !== 1 ? 'ies' : 'y'} generated from documents`, 'success');
+  } catch(e) {
+    toast('Generation failed: ' + e.message, 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '🧠 Generate Stories';
+}
+
+// ── ACTION ITEMS ──
+function getActionItems() {
+  const proj = getProject();
+  return proj?.actionItems || [];
+}
+
+function renderActionItems() {
+  const proj = getProject();
+  if (!proj) return;
+  const items = getActionItems();
+  const search = document.getElementById('actionSearch').value.toLowerCase();
+  const statusFilter = document.getElementById('actionStatusFilter').value;
+  const assigneeFilter = document.getElementById('actionAssigneeFilter').value;
+
+  // populate assignee filter
+  const assignees = [...new Set(items.map(a => a.assignee).filter(Boolean))];
+  const assigneeSelect = document.getElementById('actionAssigneeFilter');
+  const currentVal = assigneeSelect.value;
+  assigneeSelect.innerHTML = '<option value="">All assignees</option>' +
+    assignees.map(a => `<option value="${a}" ${a === currentVal ? 'selected' : ''}>${a}</option>`).join('');
+
+  let filtered = items;
+  if (search) filtered = filtered.filter(a => a.text.toLowerCase().includes(search) || (a.assignee||'').toLowerCase().includes(search));
+  if (statusFilter) filtered = filtered.filter(a => a.status === statusFilter);
+  if (assigneeFilter) filtered = filtered.filter(a => a.assignee === assigneeFilter);
+
+  // summary bar
+  const open = items.filter(a => a.status === 'open').length;
+  const inProg = items.filter(a => a.status === 'in-progress').length;
+  const done = items.filter(a => a.status === 'done').length;
+  const overdue = items.filter(a => a.due && a.status !== 'done' && new Date(a.due) < new Date()).length;
+  document.getElementById('actionSummaryBar').innerHTML = `
+    <div class="action-stat"><strong>${open}</strong> Open</div>
+    <div class="action-stat"><strong>${inProg}</strong> In Progress</div>
+    <div class="action-stat"><strong>${done}</strong> Done</div>
+    ${overdue ? `<div class="action-stat" style="border-color:#fecaca;color:var(--red)"><strong>${overdue}</strong> Overdue</div>` : ''}
+  `;
+
+  const list = document.getElementById('actionItemsList');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty-state"><div class="es-icon">✓</div><h4>${items.length ? 'No matching items' : 'No action items yet'}</h4><p>${items.length ? 'Try clearing filters.' : 'Add one below or click "Extract from Sessions" to pull items from your meeting notes.'}</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(a => {
+    const isDone = a.status === 'done';
+    const isOverdue = a.due && !isDone && new Date(a.due) < new Date();
+    const dueStyle = isOverdue ? 'color:var(--red);font-weight:600' : '';
+    const notesPreview = a.notes ? a.notes.substring(0,40) + (a.notes.length>40?'…':'') : '+ Add notes';
+    const sessionLink = a.sessionRef ? `<span onclick="jumpToSession('${a.sessionRef}')" style="font-size:10px;color:var(--navy);cursor:pointer;text-decoration:underline;margin-left:4px">📅 ${a.sessionRef}</span>` : '';
+    return `<div class="action-row ${isDone ? 'done' : ''}">
+      <div><input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleActionStatus('${a.id}', this.checked)"></div>
+      <div class="action-text">${a.text}${sessionLink}</div>
+      <div class="action-assignee-cell"><input type="text" value="${a.assignee||''}" placeholder="Unassigned" onblur="updateActionField('${a.id}','assignee',this.value)" onkeydown="if(event.key==='Enter')this.blur()"></div>
+      <div class="action-due-cell"><input type="date" value="${a.due||''}" style="${dueStyle}" onchange="updateActionField('${a.id}','due',this.value)"></div>
+      <div class="action-status-cell">
+        <select onchange="updateActionField('${a.id}','status',this.value)">
+          <option value="open" ${a.status==='open'?'selected':''}>Open</option>
+          <option value="in-progress" ${a.status==='in-progress'?'selected':''}>In Progress</option>
+          <option value="done" ${a.status==='done'?'selected':''}>Done</option>
+        </select>
+      </div>
+      <div class="action-notes-cell ${a.notes?'has-notes':''}" onclick="openActionNotes('${a.id}')">${notesPreview}</div>
+      <div><button class="action-del-btn" onclick="deleteActionItem('${a.id}')">✕</button></div>
+    </div>`;
+  }).join('');
+}
+
+function addActionItem() {
+  const text = document.getElementById('newActionText').value.trim();
+  if (!text) return;
+  const proj = getProject();
+  proj.actionItems = proj.actionItems || [];
+  proj.actionItems.push({
+    id: 'a_' + Date.now(),
+    text,
+    assignee: document.getElementById('newActionAssignee').value.trim(),
+    due: document.getElementById('newActionDue').value,
+    status: document.getElementById('newActionStatus').value,
+    notes: document.getElementById('newActionNotes').value.trim(),
+    createdAt: new Date().toISOString()
+  });
+  document.getElementById('newActionText').value = '';
+  document.getElementById('newActionAssignee').value = '';
+  document.getElementById('newActionDue').value = '';
+  document.getElementById('newActionStatus').value = 'open';
+  document.getElementById('newActionNotes').value = '';
+  save();
+  renderActionItems();
+  document.getElementById('newActionText').focus();
+}
+
+function toggleActionStatus(id, checked) {
+  const proj = getProject();
+  const item = (proj.actionItems||[]).find(a => a.id === id);
+  if (item) { item.status = checked ? 'done' : 'open'; save(); renderActionItems(); }
+}
+
+function updateActionField(id, field, value) {
+  const proj = getProject();
+  const item = (proj.actionItems||[]).find(a => a.id === id);
+  if (item) { item[field] = value; if (field === 'status') item.status = value; save(); renderActionItems(); }
+}
+
+function deleteActionItem(id) {
+  const proj = getProject();
+  proj.actionItems = (proj.actionItems||[]).filter(a => a.id !== id);
+  save();
+  renderActionItems();
+}
+
+async function extractActionsFromSessions() {
+  const proj = getProject();
+  if (!proj.sessions?.length) return toast('No sessions to extract from', 'error');
+  const btn = document.getElementById('extractActionsBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner dark"></span> Extracting…';
+  const context = buildProjectContext();
+  try {
+    const raw = await callAI(
+      'You extract action items from project meeting sessions. Return ONLY valid JSON, no markdown.',
+      `Extract all action items from these sessions:\n\n${context}\n\nReturn JSON array:
+[{ "text": "Action description", "assignee": "Name or role or empty string", "due": "YYYY-MM-DD or empty string", "sessionRef": "Session title it came from" }]`
+    );
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const items = JSON.parse(clean);
+    proj.actionItems = proj.actionItems || [];
+    let added = 0;
+    items.forEach(item => {
+      if (!item.text) return;
+      // avoid duplicates by text similarity
+      const exists = proj.actionItems.some(a => a.text.toLowerCase().trim() === item.text.toLowerCase().trim());
+      if (!exists) {
+        proj.actionItems.push({ id: 'a_' + Date.now() + Math.random(), text: item.text, assignee: item.assignee||'', due: item.due||'', status: 'open', sessionRef: item.sessionRef||'', createdAt: new Date().toISOString() });
+        added++;
+      }
+    });
+    save();
+    renderActionItems();
+    toast(`${added} action item${added !== 1 ? 's' : ''} extracted`, 'success');
+  } catch(e) {
+    toast('Extraction failed: ' + e.message, 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = '🧠 Extract from Sessions';
+}
+
+// ── DOCUMENTS ──
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('docDropZone').classList.add('drag-over');
+}
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('docDropZone').classList.remove('drag-over');
+  processFiles(Array.from(e.dataTransfer.files));
+}
+function handleFileSelect(e) {
+  processFiles(Array.from(e.target.files));
+}
+
+async function processFiles(files) {
+  const proj = getProject();
+  proj.documents = proj.documents || [];
+  for (const file of files) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    let content = '';
+    try {
+      if (ext === 'pdf') {
+        content = '[PDF — will be sent to AI as binary for analysis]';
+        const b64 = await fileToBase64(file);
+        proj.documents.push({ id: 'd_' + Date.now(), name: file.name, type: 'pdf', size: file.size, content: '', b64, addedAt: new Date().toISOString() });
+      } else if (ext === 'docx' || ext === 'doc') {
+        const ab = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: ab });
+        content = result.value;
+        proj.documents.push({ id: 'd_' + Date.now(), name: file.name, type: 'docx', size: file.size, content, addedAt: new Date().toISOString() });
+      } else if (ext === 'vtt' || ext === 'txt') {
+        const raw = await file.text();
+        content = ext === 'vtt' ? parseVtt(raw) : raw;
+        proj.documents.push({ id: 'd_' + Date.now(), name: file.name, type: ext, size: file.size, content, addedAt: new Date().toISOString() });
+      }
+    } catch(e) {
+      toast('Could not read ' + file.name, 'error');
+      continue;
+    }
+    save();
+    toast(file.name + ' added', 'success');
+  }
+  renderDocuments();
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+function renderDocuments() {
+  const proj = getProject();
+  const list = document.getElementById('docList');
+  const docs = proj?.documents || [];
+  if (!docs.length) {
+    list.innerHTML = '<div class="empty-state"><div class="es-icon">📁</div><h4>No documents yet</h4><p>Upload requirements docs, SOWs, or .vtt transcripts.</p></div>';
+    return;
+  }
+  const icons = { pdf: '📄', docx: '📝', doc: '📝', vtt: '🎙', txt: '📃' };
+  list.innerHTML = docs.map(d => {
+    const size = d.size < 1024 ? d.size + ' B' : d.size < 1024*1024 ? Math.round(d.size/1024) + ' KB' : Math.round(d.size/1024/1024*10)/10 + ' MB';
+    return `<div class="doc-item">
+      <div class="doc-icon">${icons[d.type] || '📎'}</div>
+      <div class="doc-info">
+        <div class="doc-name">${d.name}</div>
+        <div class="doc-meta">${d.type.toUpperCase()} · ${size} · Added ${new Date(d.addedAt).toLocaleDateString()}</div>
+      </div>
+      <div class="doc-actions">
+        <button class="btn-sm danger" onclick="removeDocument('${d.id}')">Remove</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function removeDocument(id) {
+  const proj = getProject();
+  proj.documents = proj.documents.filter(d => d.id !== id);
+  save();
+  renderDocuments();
+  toast('Document removed');
+}
+
+// ── CONTEXT BUILDER ──
+function buildProjectContext() {
+  const proj = getProject();
+  const sessions = (proj.sessions || []).map(s =>
+    `SESSION: ${s.title} (${s.type}, ${s.date})\nAttendees: ${s.attendees || 'N/A'}\nNotes: ${s.notes || 'None'}\nSummary: ${s.summary || 'None'}`
+  ).join('\n\n---\n\n');
+  const docs = (proj.documents || []).filter(d => d.content).map(d =>
+    `DOCUMENT: ${d.name}\nContent: ${d.content.substring(0, 3000)}`
+  ).join('\n\n---\n\n');
+  const stories = (proj.userStories || []).map(s =>
+    `${s.storyId}: As a ${s.role || '[role]'}, I want ${s.want}, so that ${s.benefit || '[benefit not specified]'}\nApplication/Area: ${s.appArea || 'Not specified'}\nPriority: ${s.priority} | Status: ${s.status}${s.acceptance ? `\nAcceptance Criteria: ${s.acceptance}` : ''}`
+  ).join('\n\n---\n\n');
+  return `PROJECT: ${proj.name}
+CLIENT: ${proj.client || 'N/A'}
+TYPE: ${projTypeLabel(proj.type)}
+DESCRIPTION: ${proj.description || 'N/A'}
+START DATE: ${proj.startDate || 'TBD'}
+GO-LIVE: ${proj.endDate || 'TBD'}
+
+USER STORIES:
+${stories || 'No user stories captured.'}
+
+SESSIONS:
+${sessions || 'No sessions recorded.'}
+
+DOCUMENTS:
+${docs || 'No documents uploaded.'}`;
+}
+
+// ── AI CALLS ──
+async function callAI(systemPrompt, userPrompt, pdfDocs=[]) {
+  const key = getApiKey();
+  if (!key) throw new Error('No API key set. Click ⚙ API Key to add one.');
+  
+  let content = [];
+  for (const doc of pdfDocs) {
+    if (doc.b64) {
+      content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: doc.b64 } });
+    }
+  }
+  content.push({ type: 'text', text: userPrompt });
+
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content }]
+    })
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'API error ' + resp.status);
+  }
+  const data = await resp.json();
+  return data.content.map(c => c.text || '').join('');
+}
+
+async function aiSummarizeSession(sess) {
+  const proj = getProject();
+  return callAI(
+    `You are a Professional Services project intelligence assistant specializing in Archer GRC and Evolv implementations. Summarize meeting sessions concisely and professionally. Focus on decisions made, requirements captured, open items, and next steps. Keep summaries to 3-5 sentences.`,
+    `Summarize this session for the project "${proj.name}" (Client: ${proj.client || 'N/A'}, Type: ${proj.type}):
+Session: ${sess.title} | Type: ${sess.type} | Date: ${sess.date}
+Attendees: ${sess.attendees || 'N/A'}
+Notes: ${sess.notes}`
+  );
+}
+
+// ── ANALYSIS ──
+async function runAnalysis(type) {
+  const output = document.getElementById('analysisOutput');
+  output.innerHTML = `<div class="ai-output loading"><span class="spinner dark"></span> Running ${type} analysis…</div>`;
+  
+  const proj = getProject();
+  const pdfDocs = (proj.documents || []).filter(d => d.b64);
+  const context = buildProjectContext();
+
+  const prompts = {
+    summary: {
+      sys: 'You are a PS delivery expert specializing in Archer/Evolv GRC implementations. Provide clear, executive-level project summaries.',
+      user: `Provide an executive project summary for:\n\n${context}\n\nCover: overall scope and status, key stakeholders, major workstreams, critical dependencies, and any concerns.`
+    },
+    risks: {
+      sys: 'You are a risk management expert for GRC implementation projects. Identify and classify risks by severity (HIGH/MEDIUM/LOW).',
+      user: `Identify all risks, blockers, and concerns from this project data:\n\n${context}\n\nFormat each risk as:\nRISK [HIGH|MEDIUM|LOW]: [description]\nMITIGATION: [suggested action]`
+    },
+    actions: {
+      sys: 'You extract action items from meeting notes and project context. Be specific about assignees and due dates when mentioned.',
+      user: `Extract all open action items from this project:\n\n${context}\n\nFormat each as:\nACTION: [what needs to be done]\nASSIGNED TO: [name or role]\nDUE: [date or timeframe if mentioned]`
+    },
+    gaps: {
+      sys: 'You analyze requirements completeness for Archer/Evolv implementations. Identify gaps, ambiguities, and missing information.',
+      user: `Analyze requirements completeness for:\n\n${context}\n\nIdentify: missing requirements, ambiguous specifications, conflicting inputs, and questions that need answers before design can proceed.`
+    },
+    stakeholders: {
+      sys: 'You map stakeholders in enterprise GRC implementation projects.',
+      user: `Build a stakeholder map from:\n\n${context}\n\nFor each stakeholder identified, note: name/role, involvement type, areas of interest/concern, and any relationship dynamics observed.`
+    },
+    decisions: {
+      sys: 'You maintain decision logs for complex enterprise projects.',
+      user: `Extract all key decisions from:\n\n${context}\n\nFor each decision: DECISION: [what was decided] | DATE: [when] | RATIONALE: [why] | IMPACT: [what it affects]`
+    }
+  };
+
+  try {
+    const result = await callAI(prompts[type].sys, prompts[type].user, pdfDocs);
+    output.innerHTML = renderAnalysisOutput(type, result);
+  } catch(e) {
+    output.innerHTML = `<div class="ai-output error">Error: ${e.message}</div>`;
+  }
+}
+
+function renderAnalysisOutput(type, text) {
+  if (type === 'risks') {
+    const lines = text.split('\n').filter(l => l.trim());
+    let html = '<div class="section-title">Risk Flags</div>';
+    let currentRisk = null;
+    lines.forEach(line => {
+      const m = line.match(/^RISK\s+\[(HIGH|MEDIUM|LOW)\]:\s*(.+)/i);
+      const mit = line.match(/^MITIGATION:\s*(.+)/i);
+      if (m) {
+        currentRisk = m[1].toLowerCase();
+        html += `<div class="risk-item ${currentRisk}"><div><strong>${m[1]}</strong>: ${m[2]}`;
+      } else if (mit && currentRisk) {
+        html += `<br><em>→ ${mit[1]}</em></div></div>`;
+        currentRisk = null;
+      } else if (line.trim() && !currentRisk) {
+        html += `<div style="font-size:13px;margin:4px 0;color:var(--text-muted)">${line}</div>`;
+      }
+    });
+    return html;
+  }
+  if (type === 'actions') {
+    const blocks = text.split(/\n(?=ACTION:)/i).filter(b => b.trim());
+    let html = '<div class="section-title">Action Items <span style="font-size:11px;font-weight:400;color:var(--text-muted)">— <a href="#" onclick="saveAnalysisActions()" style="color:var(--navy)">Save all to Action Items tab</a></span></div>';
+    blocks.forEach(block => {
+      const action = block.match(/ACTION:\s*(.+)/i)?.[1] || '';
+      const assigned = block.match(/ASSIGNED TO:\s*(.+)/i)?.[1] || '';
+      const due = block.match(/DUE:\s*(.+)/i)?.[1] || '';
+      if (action) html += `<div class="action-item">
+        <input type="checkbox">
+        <div class="ai-text">${action}</div>
+        ${assigned ? `<span class="ai-assignee">${assigned}</span>` : ''}
+        ${due ? `<span class="ai-due">${due}</span>` : ''}
+      </div>`;
+    });
+    // store raw for save
+    window._lastAnalysisActionsRaw = text;
+    return html || `<div class="ai-output">${text}</div>`;
+  }
+  return `<div class="section-title">${type.charAt(0).toUpperCase() + type.slice(1)}</div><div class="ai-output">${text}</div>`;
+}
+
+// ── ARTIFACTS ──
+const ARTIFACT_META = {
+  'project-plan': { label: 'Project Plan', download: 'xlsx', downloadLabel: '⬇ Download Excel' },
+  'raci': { label: 'RACI Matrix', download: 'xlsx', downloadLabel: '⬇ Download Excel' },
+  'workflow-diagram': { label: 'Workflow Diagram', download: 'drawio', downloadLabel: '⬇ Download .drawio' },
+  'design-doc': { label: 'Design Document', download: 'copy', downloadLabel: null },
+  'requirements': { label: 'Requirements Summary', download: 'copy', downloadLabel: null },
+  'traceability': { label: 'Traceability Matrix', download: 'xlsx', downloadLabel: '⬇ Download Excel' },
+  'config-spec': { label: 'Configuration Specification', download: 'xlsx', downloadLabel: '⬇ Download Excel' },
+  'app-diagram': { label: 'Archer Application Diagram', download: 'drawio', downloadLabel: '⬇ Download .drawio' },
+  'integration-diagram': { label: 'Integration Diagram', download: 'drawio', downloadLabel: '⬇ Download .drawio' },
+  'access-control': { label: 'Access Control Model', download: 'xlsx', downloadLabel: '⬇ Download Excel' },
+  'reporting-spec': { label: 'Reporting & Dashboard Spec', download: 'xlsx', downloadLabel: '⬇ Download Excel' },
+  'notification-spec': { label: 'Notification Specification', download: 'xlsx', downloadLabel: '⬇ Download Excel' }
+};
+
+async function generateArtifact(type) {
+  const proj = getProject();
+  const meta = ARTIFACT_META[type];
+  const pdfDocs = (proj.documents || []).filter(d => d.b64);
+  const context = buildProjectContext();
+
+  const artModalTitle = document.getElementById('artModalTitle');
+  const artModalBody = document.getElementById('artModalBody');
+  const artDownloadBtn = document.getElementById('artDownloadBtn');
+
+  artModalTitle.textContent = 'Generating ' + meta.label + '…';
+  artModalBody.innerHTML = '<span class="spinner dark"></span> Analyzing project context and generating artifact…';
+  artModalBody.className = 'ai-output loading';
+  artDownloadBtn.style.display = 'none';
+  openModal('artifactModal');
+
+  const prompts = {
+    'project-plan': {
+      sys: `You are a Professional Services project manager expert in Archer GRC and Evolv implementations. Generate structured project plans in JSON for Excel export.`,
+      user: `Generate a detailed project plan for:\n\n${context}\n\nReturn ONLY valid JSON (no markdown) with this structure:
+{
+  "phases": [
+    {
+      "name": "Phase name",
+      "startWeek": 1,
+      "endWeek": 4,
+      "tasks": [
+        { "task": "Task description", "owner": "Role", "duration": "X days", "dependencies": "None or task name", "status": "Not Started" }
+      ]
+    }
+  ]
+}`
+    },
+    'raci': {
+      sys: `You are a PS delivery expert. Generate RACI matrices for Archer/Evolv implementations in JSON format.`,
+      user: `Generate a RACI matrix for:\n\n${context}\n\nReturn ONLY valid JSON (no markdown):
+{
+  "roles": ["Role1","Role2","Role3"],
+  "workstreams": [
+    { "area": "Workstream name", "activity": "Specific activity", "assignments": { "Role1": "R", "Role2": "A", "Role3": "C" } }
+  ]
+}`
+    },
+    'workflow-diagram': {
+      sys: `You are an enterprise architect who creates Draw.io XML diagrams for Archer GRC and Evolv workflow processes.`,
+      user: `Create a Draw.io XML workflow diagram for:\n\n${context}\n\nGenerate complete, valid Draw.io XML (mxGraphModel format) showing the key process flow, data flows, and system integrations. Return ONLY the XML, no explanation.`
+    },
+    'design-doc': {
+      sys: `You are a solutions architect writing design documents for Archer GRC and Evolv implementations.`,
+      user: `Write a technical design document for:\n\n${context}\n\nInclude: Executive Summary, Solution Architecture, Key Design Decisions, Configuration Requirements, Integration Points, Data Flow, Security Considerations, and Open Questions.`
+    },
+    'requirements': {
+      sys: `You are a business analyst specializing in GRC platform requirements for Archer/Evolv.`,
+      user: `Produce a structured requirements summary from:\n\n${context}\n\nOrganize into: Functional Requirements (numbered), Non-Functional Requirements, Integration Requirements, Data Requirements, Reporting Requirements, and Out of Scope items.`
+    },
+    'traceability': {
+      sys: `You generate requirements traceability matrices for enterprise GRC projects.`,
+      user: `Generate a requirements traceability matrix for:\n\n${context}\n\nReturn ONLY valid JSON (no markdown):
+{
+  "entries": [
+    { "reqId": "REQ-001 or Story ID", "requirement": "Requirement text", "source": "Document, session, or user story ID", "designDecision": "How addressed", "deliverable": "Artifact name", "status": "Open|In Progress|Closed" }
+  ]
+}`
+    },
+    'config-spec': {
+      sys: `You are a senior Archer GRC/Evolv configurator with deep platform expertise. You write detailed, build-ready configuration specifications directly from user stories and requirements — field types, calculated fields, data-driven events (DDEs), and workflow rules, exactly as a configurator would need to build it without further clarification.`,
+      user: `Generate a detailed Archer configuration specification from the user stories and project context below:\n\n${context}\n\nReturn ONLY valid JSON (no markdown) with this structure. For each user story, derive the specific Archer application/questionnaire, fields needed, and configuration logic:
+{
+  "applications": [
+    {
+      "appName": "Application or Questionnaire name",
+      "relatedStoryIds": "US-001, US-002",
+      "fields": [
+        { "fieldName": "Field name", "fieldType": "Text|Numeric|Date|Values List|Cross-Reference|Related Records|Record Permissions|Calculated|Attachment|External Links|Image|Sub-Form", "calculation": "Formula if calculated field, else blank", "required": "Yes|No", "description": "Purpose and configuration notes" }
+      ],
+      "dataDrivenEvents": [
+        { "trigger": "What field/value triggers this DDE", "action": "Show/Hide/Require/Set Value field action", "targetFields": "Affected fields" }
+      ],
+      "workflowRules": [
+        { "rule": "Rule name/trigger", "condition": "When this applies", "action": "What happens (status change, notification, record lock, etc.)" }
+      ]
+    }
+  ]
+}`
+    },
+    'app-diagram': {
+      sys: `You are an Archer GRC solutions architect who creates Draw.io XML diagrams showing Archer application architecture — applications, questionnaires, sub-forms, and cross-reference/related records relationships.`,
+      user: `Create a Draw.io XML diagram of the Archer application architecture implied by these user stories and project context:\n\n${context}\n\nShow each application/questionnaire as a box, with arrows labeled by relationship type (Cross-Reference, Related Records, Sub-Form) connecting them. Generate complete, valid Draw.io XML (mxGraphModel format). Return ONLY the XML, no explanation.`
+    },
+    'integration-diagram': {
+      sys: `You are an enterprise integration architect specializing in Archer GRC/Evolv system integrations, creating Draw.io XML diagrams.`,
+      user: `Create a Draw.io XML integration diagram for:\n\n${context}\n\nShow Archer at the center with external systems it integrates with (based on user stories and project context — e.g. identity providers, ticketing systems, data feeds, email/notification systems), with labeled arrows showing direction of data flow and integration method (API, Data Feed, Web Service, etc.) where known or reasonably inferred. Generate complete, valid Draw.io XML (mxGraphModel format). Return ONLY the XML, no explanation.`
+    },
+    'access-control': {
+      sys: `You are an Archer GRC security architect who designs access control models — roles, groups, and record permissions — mapped to user stories.`,
+      user: `Generate an access control model from these user stories and project context:\n\n${context}\n\nReturn ONLY valid JSON (no markdown):
+{
+  "roles": [
+    { "roleGroup": "Role/Group name", "relatedStoryIds": "US-001, US-003", "accessLevel": "Read|Update|Create|Delete|Full Control", "applications": "Which applications this applies to", "recordPermissionLogic": "Field-based or ownership-based logic that scopes access (e.g. 'Owner field = current user OR Business Unit field matches user's group')" }
+  ]
+}`
+    },
+    'reporting-spec': {
+      sys: `You are an Archer GRC reporting analyst who designs reports and dashboards from user stories and business requirements.`,
+      user: `Generate a reporting and dashboard specification from these user stories and project context:\n\n${context}\n\nReturn ONLY valid JSON (no markdown):
+{
+  "reports": [
+    { "reportName": "Report name", "relatedStoryIds": "US-002", "type": "Report|Dashboard|iView", "audience": "Who views this", "dataSource": "Application(s) the report pulls from", "fieldsDisplayed": "Key fields/columns", "filtersGrouping": "Filter and grouping logic", "frequency": "Real-time|Daily|Weekly|On-Demand" }
+  ]
+}`
+    },
+    'notification-spec': {
+      sys: `You are an Archer GRC business analyst who designs notification specifications from user stories — triggers, recipients, and conditions.`,
+      user: `Generate a notification specification from these user stories and project context:\n\n${context}\n\nReturn ONLY valid JSON (no markdown):
+{
+  "notifications": [
+    { "notificationName": "Notification name", "relatedStoryIds": "US-004", "trigger": "What triggers this (e.g. record creation, status change, DDE, scheduled)", "condition": "Specific condition for triggering", "recipients": "Who receives it (role, owner, specific field value)", "deliveryMethod": "Email|Archer Notification|Both", "content": "Brief description of message content/purpose" }
+  ]
+}`
+    }
+  };
+
+  try {
+    const p = prompts[type];
+    const rawResult = await callAI(p.sys, p.user, pdfDocs);
+    
+    state.currentArtifact = { type, raw: rawResult, meta };
+    artModalTitle.textContent = meta.label;
+    artModalBody.className = 'ai-output';
+
+    if (['workflow-diagram','app-diagram','integration-diagram'].includes(type)) {
+      artModalBody.className = 'ai-output xml-preview';
+      artModalBody.textContent = rawResult;
+      artDownloadBtn.style.display = '';
+      artDownloadBtn.textContent = meta.downloadLabel;
+    } else if (['project-plan','raci','traceability','config-spec','access-control','reporting-spec','notification-spec'].includes(type)) {
+      artModalBody.textContent = rawResult;
+      artDownloadBtn.style.display = '';
+      artDownloadBtn.textContent = meta.downloadLabel;
+    } else {
+      artModalBody.textContent = rawResult;
+    }
+  } catch(e) {
+    artModalBody.className = 'ai-output error';
+    artModalBody.textContent = 'Error: ' + e.message;
+  }
+}
+
+function copyArtifact() {
+  if (!state.currentArtifact) return;
+  navigator.clipboard.writeText(state.currentArtifact.raw);
+  toast('Copied to clipboard', 'success');
+}
+
+async function downloadArtifact() {
+  const { type, raw } = state.currentArtifact;
+  const proj = getProject();
+  const safeName = proj.name.replace(/[^a-zA-Z0-9]/g,'_');
+
+  if (['workflow-diagram','app-diagram','integration-diagram'].includes(type)) {
+    const blob = new Blob([raw], { type: 'application/xml' });
+    const suffix = type === 'workflow-diagram' ? 'workflow' : type === 'app-diagram' ? 'app_diagram' : 'integration_diagram';
+    triggerDownload(blob, `${safeName}_${suffix}.drawio`);
+    return;
+  }
+
+  // Excel exports
+  let wb;
+  try {
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const data = JSON.parse(clean);
+    wb = XLSX.utils.book_new();
+
+    if (type === 'project-plan') {
+      const rows = [['Phase','Task','Owner','Duration','Dependencies','Status']];
+      (data.phases || []).forEach(phase => {
+        (phase.tasks || []).forEach(t => {
+          rows.push([phase.name, t.task, t.owner, t.duration, t.dependencies, t.status]);
+        });
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      styleSheet(ws, rows.length, 6);
+      XLSX.utils.book_append_sheet(wb, ws, 'Project Plan');
+    } else if (type === 'raci') {
+      const roles = data.roles || [];
+      const header = ['Workstream / Activity', ...roles];
+      const rows = [header];
+      (data.workstreams || []).forEach(w => {
+        const row = [w.area + ' — ' + w.activity, ...roles.map(r => w.assignments?.[r] || '')];
+        rows.push(row);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      styleSheet(ws, rows.length, header.length);
+      XLSX.utils.book_append_sheet(wb, ws, 'RACI Matrix');
+    } else if (type === 'traceability') {
+      const rows = [['Req ID','Requirement','Source','Design Decision','Deliverable','Status']];
+      (data.entries || []).forEach(e => {
+        rows.push([e.reqId, e.requirement, e.source, e.designDecision, e.deliverable, e.status]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      styleSheet(ws, rows.length, 6);
+      XLSX.utils.book_append_sheet(wb, ws, 'Traceability Matrix');
+    } else if (type === 'config-spec') {
+      const rows = [['Application','Related Stories','Field Name','Field Type','Calculation','Required','Description']];
+      (data.applications || []).forEach(app => {
+        (app.fields || []).forEach(f => {
+          rows.push([app.appName, app.relatedStoryIds||'', f.fieldName, f.fieldType, f.calculation||'', f.required, f.description]);
+        });
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      styleSheet(ws, rows.length, 7);
+      XLSX.utils.book_append_sheet(wb, ws, 'Fields');
+
+      const ddeRows = [['Application','Trigger','Action','Target Fields']];
+      (data.applications || []).forEach(app => {
+        (app.dataDrivenEvents || []).forEach(d => {
+          ddeRows.push([app.appName, d.trigger, d.action, d.targetFields]);
+        });
+      });
+      if (ddeRows.length > 1) {
+        const wsDde = XLSX.utils.aoa_to_sheet(ddeRows);
+        styleSheet(wsDde, ddeRows.length, 4);
+        XLSX.utils.book_append_sheet(wb, wsDde, 'Data-Driven Events');
+      }
+
+      const ruleRows = [['Application','Rule','Condition','Action']];
+      (data.applications || []).forEach(app => {
+        (app.workflowRules || []).forEach(r => {
+          ruleRows.push([app.appName, r.rule, r.condition, r.action]);
+        });
+      });
+      if (ruleRows.length > 1) {
+        const wsRules = XLSX.utils.aoa_to_sheet(ruleRows);
+        styleSheet(wsRules, ruleRows.length, 4);
+        XLSX.utils.book_append_sheet(wb, wsRules, 'Workflow Rules');
+      }
+    } else if (type === 'access-control') {
+      const rows = [['Role/Group','Related Stories','Access Level','Applications','Record Permission Logic']];
+      (data.roles || []).forEach(r => {
+        rows.push([r.roleGroup, r.relatedStoryIds||'', r.accessLevel, r.applications, r.recordPermissionLogic]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      styleSheet(ws, rows.length, 5);
+      XLSX.utils.book_append_sheet(wb, ws, 'Access Control Model');
+    } else if (type === 'reporting-spec') {
+      const rows = [['Report Name','Related Stories','Type','Audience','Data Source','Fields Displayed','Filters/Grouping','Frequency']];
+      (data.reports || []).forEach(r => {
+        rows.push([r.reportName, r.relatedStoryIds||'', r.type, r.audience, r.dataSource, r.fieldsDisplayed, r.filtersGrouping, r.frequency]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      styleSheet(ws, rows.length, 8);
+      XLSX.utils.book_append_sheet(wb, ws, 'Reporting Spec');
+    } else if (type === 'notification-spec') {
+      const rows = [['Notification Name','Related Stories','Trigger','Condition','Recipients','Delivery Method','Content']];
+      (data.notifications || []).forEach(n => {
+        rows.push([n.notificationName, n.relatedStoryIds||'', n.trigger, n.condition, n.recipients, n.deliveryMethod, n.content]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      styleSheet(ws, rows.length, 7);
+      XLSX.utils.book_append_sheet(wb, ws, 'Notification Spec');
+    }
+
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    triggerDownload(new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `${safeName}_${type}.xlsx`);
+    toast('Downloaded!', 'success');
+  } catch(e) {
+    toast('Download failed — try copying the raw output instead', 'error');
+    console.error(e);
+  }
+}
+
+function styleSheet(ws, rowCount, colCount) {
+  const headerStyle = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '0F2545' } }, alignment: { horizontal: 'center' } };
+  for (let c = 0; c < colCount; c++) {
+    const cell = XLSX.utils.encode_cell({ r: 0, c });
+    if (!ws[cell]) ws[cell] = {};
+    ws[cell].s = headerStyle;
+  }
+  if (!ws['!cols']) ws['!cols'] = [];
+  for (let c = 0; c < colCount; c++) ws['!cols'][c] = { wch: c === 1 ? 40 : 20 };
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── GLOBAL ANALYSIS ──
+async function runGlobalAnalysis(type) {
+  const outputId = type === 'actions' ? 'globalActionsOutput' : 'globalRisksOutput';
+  const output = document.getElementById(outputId);
+  output.innerHTML = `<div class="ai-output loading"><span class="spinner dark"></span> Analyzing all projects…</div>`;
+  
+  if (!state.projects.length) {
+    output.innerHTML = '<div class="empty-state"><div class="es-icon">📂</div><h4>No projects yet</h4><p>Create projects and add sessions first.</p></div>';
+    return;
+  }
+
+  const savedId = state.currentProjectId;
+  let allResults = [];
+  
+  for (const proj of state.projects) {
+    state.currentProjectId = proj.id;
+    const context = buildProjectContext();
+    const pdfDocs = (proj.documents || []).filter(d => d.b64);
+    try {
+      const prompts = {
+        actions: { sys: 'Extract action items from project context.', user: `Project: ${proj.name}\n\n${context}\n\nList all action items as: ACTION: [what] | ASSIGNED TO: [who] | DUE: [when]` },
+        risks: { sys: 'Identify risks from project context.', user: `Project: ${proj.name}\n\n${context}\n\nList risks as: RISK [HIGH|MEDIUM|LOW]: [description] | MITIGATION: [action]` }
+      };
+      const result = await callAI(prompts[type].sys, prompts[type].user, pdfDocs);
+      allResults.push({ proj: proj.name, result });
+    } catch(e) {}
+  }
+  
+  state.currentProjectId = savedId;
+  
+  if (!allResults.length) {
+    output.innerHTML = '<div class="ai-output error">Could not retrieve data. Check your API key.</div>';
+    return;
+  }
+  
+  output.innerHTML = allResults.map(r => `
+    <div style="margin-bottom:20px">
+      <div class="section-title">${r.proj}</div>
+      ${renderAnalysisOutput(type, r.result)}
+    </div>`).join('');
+}
+
+function projTypeLabel(type) {
+  const labels = {
+    archer: 'Archer Platform', evolv: 'Archer Evolv', docgov: 'Document Governance',
+    'archer-evolv': 'Archer + Evolv', 'archer-docgov': 'Archer + Doc Gov',
+    'evolv-docgov': 'Evolv + Doc Gov', all: 'Archer + Evolv + Doc Gov',
+    both: 'Archer + Evolv' // legacy
+  };
+  return labels[type] || 'Archer Platform';
+}
+function projTypeIcon(type) {
+  if (type === 'evolv') return '🔄';
+  if (type === 'docgov') return '📂';
+  if (type === 'archer-evolv' || type === 'both') return '⚙';
+  if (type === 'archer-docgov') return '📋';
+  if (type === 'evolv-docgov') return '🔀';
+  if (type === 'all') return '🌐';
+  return '🏛';
+}
+function projTypeBadgeClass(type) {
+  if (type === 'evolv' || type === 'archer-evolv' || type === 'both') return ' evolv';
+  if (type === 'docgov' || type === 'archer-docgov') return ' docgov';
+  if (type === 'evolv-docgov' || type === 'all') return ' all';
+  return '';
+}
+
+// ── ACTION NOTES MODAL ──
+function openActionNotes(id) {
+  const proj = getProject();
+  const item = (proj.actionItems||[]).find(a => a.id === id);
+  if (!item) return;
+  state.currentActionId = id;
+  document.getElementById('actionNoteItemText').textContent = item.text;
+  document.getElementById('actionNoteText').value = item.notes || '';
+  const refGroup = document.getElementById('actionNoteSessionRefGroup');
+  const refLink = document.getElementById('actionNoteSessionRefLink');
+  if (item.sessionRef) {
+    refGroup.style.display = '';
+    refLink.textContent = item.sessionRef;
+    refLink.onclick = () => { closeModal('actionNotesModal'); jumpToSession(item.sessionRef); };
+  } else {
+    refGroup.style.display = 'none';
+  }
+  openModal('actionNotesModal');
+  setTimeout(() => document.getElementById('actionNoteText').focus(), 100);
+}
+
+function saveActionNotes() {
+  const proj = getProject();
+  const item = (proj.actionItems||[]).find(a => a.id === state.currentActionId);
+  if (item) {
+    item.notes = document.getElementById('actionNoteText').value.trim();
+    save();
+    renderActionItems();
+    toast('Notes saved', 'success');
+  }
+  closeModal('actionNotesModal');
+}
+
+// ── SESSION JUMP ──
+function jumpToSession(sessionTitle) {
+  const proj = getProject();
+  const sess = (proj.sessions||[]).find(s => s.title === sessionTitle);
+  if (!sess) return toast('Session not found', 'error');
+  // switch to sessions tab then open detail
+  const sessionTab = document.querySelector('.tab');
+  switchTab('sessions', sessionTab);
+  setTimeout(() => openSessionDetail(sess.id), 100);
+}
+
+// ── EXPORT ACTION ITEMS TO EXCEL ──
+function exportActionItemsXlsx() {
+  const proj = getProject();
+  const items = proj.actionItems || [];
+  if (!items.length) return toast('No action items to export', 'error');
+  const wb = XLSX.utils.book_new();
+  const rows = [['Action Item', 'Assigned To', 'Due Date', 'Status', 'Source Session', 'Notes']];
+  items.forEach(a => {
+    rows.push([a.text, a.assignee||'', a.due||'', a.status, a.sessionRef||'', a.notes||'']);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // header style
+  const hStyle = { font:{bold:true,color:{rgb:'FFFFFF'}}, fill:{fgColor:{rgb:'3b82f6'}}, alignment:{horizontal:'center'} };
+  for (let c = 0; c < 6; c++) {
+    const cell = XLSX.utils.encode_cell({r:0,c});
+    if (!ws[cell]) ws[cell] = {};
+    ws[cell].s = hStyle;
+  }
+  ws['!cols'] = [{wch:40},{wch:18},{wch:12},{wch:14},{wch:28},{wch:40}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Action Items');
+  const safeName = proj.name.replace(/[^a-zA-Z0-9]/g,'_');
+  const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  triggerDownload(new Blob([wbout],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), `${safeName}_action_items.xlsx`);
+  toast('Downloaded!', 'success');
+}
+
+// ── MEETING DIGEST ──
+async function generateDigest() {
+  const proj = getProject();
+  if (!proj.sessions?.length) return toast('No sessions to digest', 'error');
+  const btn = document.getElementById('digestBtn');
+  const copyBtn = document.getElementById('digestCopyBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner dark"></span> Generating…';
+  copyBtn.style.display = 'none';
+  const output = document.getElementById('digestOutput');
+  output.innerHTML = '<div class="ai-output loading"><span class="spinner dark"></span> Synthesizing all sessions…</div>';
+
+  const context = buildProjectContext();
+  const pdfDocs = (proj.documents||[]).filter(d => d.b64);
+
+  try {
+    const result = await callAI(
+      `You are a PS delivery expert producing consolidated project meeting digests for Archer GRC and Evolv implementations. Write clearly and professionally, structured for easy skimming by a PS Sponsor or client stakeholder.`,
+      `Generate a comprehensive meeting digest for this project:\n\n${context}\n\nStructure your digest as follows:
+## Project Overview
+Brief current state and scope reminder.
+
+## Session Summaries
+For each session, a 2-3 sentence summary of what was covered, decided, and who attended.
+
+## Key Decisions Made
+Numbered list of all significant decisions across all sessions.
+
+## Recurring Themes & Patterns
+What topics or concerns keep surfacing across sessions?
+
+## Open Questions & Blockers
+Items that have been raised but not resolved.
+
+## Progress Narrative
+A short paragraph describing how the project has evolved from session to session — what momentum exists, what has stalled, and overall health.`
+    , pdfDocs);
+
+    window._lastDigestRaw = result;
+    output.innerHTML = renderDigest(result);
+    copyBtn.style.display = '';
+    toast('Digest generated', 'success');
+  } catch(e) {
+    output.innerHTML = `<div class="ai-output error">Error: ${e.message}</div>`;
+  }
+  btn.disabled = false;
+  btn.innerHTML = '🧠 Generate Digest';
+}
+
+function renderDigest(text) {
+  // Convert markdown-style headings and lists to HTML
+  const html = text
+    .replace(/^## (.+)$/gm, '<h3 class="digest-section-h">$1</h3>')
+    .replace(/^### (.+)$/gm, '<h4 style="font-size:13px;font-weight:700;color:var(--slate);margin:10px 0 4px">$1</h4>')
+    .replace(/^\d+\.\s+(.+)$/gm, '<div style="padding:4px 0 4px 16px;font-size:13px;border-left:3px solid var(--border);margin:3px 0;color:var(--text)">$1</div>')
+    .replace(/^[-•]\s+(.+)$/gm, '<div style="padding:3px 0 3px 16px;font-size:13px;color:var(--slate)">• $1</div>')
+    .replace(/\n\n/g, '</p><p style="margin:8px 0;font-size:13px;line-height:1.7;color:var(--slate)">')
+    .replace(/\n/g, '<br>');
+  return `<div class="digest-section"><p style="margin:8px 0;font-size:13px;line-height:1.7;color:var(--slate)">${html}</p></div>`;
+}
+
+function copyDigest() {
+  if (window._lastDigestRaw) {
+    navigator.clipboard.writeText(window._lastDigestRaw);
+    toast('Digest copied to clipboard', 'success');
+  }
+}
+function saveAnalysisActions() {
+  const text = window._lastAnalysisActionsRaw;
+  if (!text) return toast('No actions to save', 'error');
+  const proj = getProject();
+  proj.actionItems = proj.actionItems || [];
+  const blocks = text.split(/\n(?=ACTION:)/i).filter(b => b.trim());
+  let added = 0;
+  blocks.forEach(block => {
+    const action = block.match(/ACTION:\s*(.+)/i)?.[1]?.trim();
+    const assigned = block.match(/ASSIGNED TO:\s*(.+)/i)?.[1]?.trim() || '';
+    if (!action) return;
+    const exists = proj.actionItems.some(a => a.text.toLowerCase().trim() === action.toLowerCase());
+    if (!exists) {
+      proj.actionItems.push({ id: 'a_' + Date.now() + Math.random(), text: action, assignee: assigned, due: '', status: 'open', createdAt: new Date().toISOString() });
+      added++;
+    }
+  });
+  save();
+  renderActionItems();
+  toast(`${added} item${added !== 1 ? 's' : ''} saved to Action Items tab`, 'success');
+  return false;
+}
+</script>
+</body>
+</html>
