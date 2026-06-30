@@ -1910,16 +1910,22 @@ async function processFiles(files) {
         proj.documents.push({ id: 'd_' + Date.now(), name: file.name, type: ext, size: file.size, content, addedAt: new Date().toISOString() });
       } else if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
         const ab = await file.arrayBuffer();
-        const workbook = XLSX.read(ab, { type: 'array' });
+        const workbook = XLSX.read(ab, { type: 'array', cellText: true, cellDates: true });
+        if (!workbook.SheetNames || !workbook.SheetNames.length) {
+          throw new Error('No readable sheets found in file');
+        }
         content = workbook.SheetNames.map(sheetName => {
           const sheet = workbook.Sheets[sheetName];
           const csv = XLSX.utils.sheet_to_csv(sheet);
           return `[Sheet: ${sheetName}]\n${csv}`;
         }).join('\n\n');
         proj.documents.push({ id: 'd_' + Date.now(), name: file.name, type: ext === 'csv' ? 'csv' : 'xlsx', size: file.size, content, addedAt: new Date().toISOString() });
+      } else {
+        throw new Error('Unsupported file type: .' + ext);
       }
     } catch(e) {
-      toast('Could not read ' + file.name, 'error');
+      console.error('File processing error for', file.name, e);
+      toast('Could not read ' + file.name + ': ' + e.message, 'error');
       continue;
     }
     save();
