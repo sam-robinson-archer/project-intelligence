@@ -556,6 +556,7 @@
   <div class="header-logo">PI</div>
   <h1>Project <span>Intelligence</span></h1>
   <div class="header-spacer"></div>
+  <span id="storageIndicator" style="font-size:11px;color:var(--text-muted);cursor:default" title="Browser storage used"></span>
   <button class="api-key-btn" onclick="openApiKeyModal()">⚙ API Key</button>
 </header>
 
@@ -1169,12 +1170,40 @@ function init() {
   const today = new Date().toISOString().split('T')[0];
   ['newProjStart','sessDate'].forEach(id => { const el = document.getElementById(id); if(el) el.value = today; });
   renderProjects();
+  updateStorageIndicator();
   if (state.currentProjectId) loadProject(state.currentProjectId);
   if (!localStorage.getItem('pi_api_key')) setTimeout(openApiKeyModal, 600);
 }
 
 function save() {
-  localStorage.setItem('pi_state', JSON.stringify(state));
+  try {
+    localStorage.setItem('pi_state', JSON.stringify(state));
+    updateStorageIndicator();
+    return true;
+  } catch(e) {
+    console.error('Save failed:', e);
+    if (e.name === 'QuotaExceededError' || e.code === 22) {
+      toast('Storage limit reached — large PDFs may need to be removed. Your latest change was NOT saved.', 'error');
+    } else {
+      toast('Save failed: ' + e.message, 'error');
+    }
+    updateStorageIndicator();
+    return false;
+  }
+}
+
+function updateStorageIndicator() {
+  const el = document.getElementById('storageIndicator');
+  if (!el) return;
+  try {
+    const raw = localStorage.getItem('pi_state') || '';
+    const bytes = new Blob([raw]).size;
+    const mb = (bytes / (1024*1024)).toFixed(1);
+    const pct = Math.min(100, Math.round(bytes / (5*1024*1024) * 100));
+    el.textContent = `${mb} MB used`;
+    el.style.color = pct > 85 ? 'var(--red)' : pct > 60 ? 'var(--yellow)' : 'var(--text-muted)';
+    el.title = `Approx. ${pct}% of typical 5MB browser storage limit. Large PDF uploads use the most space.`;
+  } catch(e) {}
 }
 
 // ── API KEY ──
@@ -1250,11 +1279,11 @@ function createProject() {
     createdAt: new Date().toISOString()
   };
   state.projects.push(proj);
-  save();
+  const saved = save();
   closeModal('newProjectModal');
   renderProjects();
   loadProject(proj.id);
-  toast('Project created', 'success');
+  if (saved) toast('Project created', 'success');
 }
 
 function loadProject(id) {
