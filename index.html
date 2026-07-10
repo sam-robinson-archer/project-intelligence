@@ -1166,7 +1166,17 @@ let state = {
 // ── INIT ──
 function init() {
   const saved = localStorage.getItem('pi_state');
-  if (saved) { try { state = { ...state, ...JSON.parse(saved) }; } catch(e) {} }
+  console.log('INIT: raw saved state length:', saved ? saved.length : 0);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      console.log('INIT: parsed projects count:', parsed.projects?.length);
+      state = { ...state, ...parsed };
+    } catch(e) {
+      console.error('INIT: failed to parse saved state:', e);
+    }
+  }
+  console.log('INIT: state.projects after load:', state.projects.length);
   const today = new Date().toISOString().split('T')[0];
   ['newProjStart','sessDate'].forEach(id => { const el = document.getElementById(id); if(el) el.value = today; });
   renderProjects();
@@ -1177,25 +1187,27 @@ function init() {
 
 function save() {
   try {
-    // Strip large binary data before saving — b64 PDF blobs are kept in memory
-    // only for the current session; they cannot be restored from localStorage anyway
-    // since they'd blow the 5MB quota immediately on any real document.
     const stateToSave = {
       ...state,
-      currentArtifact: null, // never persist artifact output — too large
+      currentArtifact: null,
       projects: state.projects.map(proj => ({
         ...proj,
         documents: (proj.documents || []).map(doc => {
-          const { b64, ...rest } = doc; // strip base64 PDF data
+          const { b64, ...rest } = doc;
           return rest;
         })
       }))
     };
-    localStorage.setItem('pi_state', JSON.stringify(stateToSave));
+    const serialized = JSON.stringify(stateToSave);
+    console.log('SAVE: writing', stateToSave.projects.length, 'projects,', serialized.length, 'bytes');
+    localStorage.setItem('pi_state', serialized);
+    // verify it actually wrote
+    const verify = localStorage.getItem('pi_state');
+    console.log('SAVE: verified length after write:', verify ? verify.length : 'MISSING');
     updateStorageIndicator();
     return true;
   } catch(e) {
-    console.error('Save failed:', e);
+    console.error('SAVE: failed:', e.name, e.message);
     if (e.name === 'QuotaExceededError' || e.code === 22) {
       toast('Storage limit reached — try removing documents from projects. Your latest change was NOT saved.', 'error');
     } else {
