@@ -1028,6 +1028,7 @@
     <div class="modal-footer">
       <button class="btn-sm" onclick="copyArtifact()">📋 Copy</button>
       <button class="btn-sm primary" id="artDownloadBtn" onclick="downloadArtifact()" style="display:none">⬇ Download</button>
+      <button class="btn-sm orange" id="artRegenerateBtn" onclick="regenerateArtifact()" style="display:none">🔄 Regenerate</button>
       <button class="btn-sm" onclick="closeModal('artifactModal')">Close</button>
     </div>
   </div>
@@ -2443,6 +2444,7 @@ async function generateArtifact(type) {
     state.currentArtifact = { type, raw: rawResult, meta };
     artModalTitle.textContent = meta.label;
     artModalBody.className = 'ai-output';
+    document.getElementById('artRegenerateBtn').style.display = '';
 
     if (['workflow-diagram','app-diagram','integration-diagram'].includes(type)) {
       artModalBody.className = 'ai-output xml-preview';
@@ -2473,6 +2475,7 @@ function openSavedArtifact(projId, artifactId) {
   const artModalTitle = document.getElementById('artModalTitle');
   const artModalBody = document.getElementById('artModalBody');
   const artDownloadBtn = document.getElementById('artDownloadBtn');
+  document.getElementById('artRegenerateBtn').style.display = '';
 
   artModalTitle.textContent = artifact.meta.label;
   artModalBody.className = 'ai-output';
@@ -2507,6 +2510,13 @@ function copyArtifact() {
   if (!state.currentArtifact) return;
   navigator.clipboard.writeText(state.currentArtifact.raw);
   toast('Copied to clipboard', 'success');
+}
+
+function regenerateArtifact() {
+  if (!state.currentArtifact) return;
+  closeModal('artifactModal');
+  // Small delay so modal closes cleanly before re-opening
+  setTimeout(() => generateArtifact(state.currentArtifact.type), 150);
 }
 
 async function downloadArtifact() {
