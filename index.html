@@ -154,6 +154,25 @@
   .nav-item:hover { background: var(--bg); color: var(--text); }
   .nav-item.active { background: var(--bg); color: var(--navy); font-weight: 600; }
 
+  /* ── ARTIFACT NAV ITEMS ── */
+  .artifact-nav-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 10px 5px 32px;
+    font-size: 12px; color: var(--slate);
+    cursor: pointer; border-radius: 6px; margin: 1px 8px;
+    transition: all 0.15s;
+  }
+  .artifact-nav-item:hover { background: var(--bg); color: var(--navy); }
+  .artifact-nav-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .artifact-nav-date { font-size: 10px; color: var(--slate-light); flex-shrink: 0; }
+  .artifact-nav-del {
+    background: none; border: none; cursor: pointer; font-size: 13px;
+    color: var(--slate-light); padding: 0 2px; line-height: 1;
+    display: none; border-radius: 3px;
+  }
+  .artifact-nav-item:hover .artifact-nav-del { display: block; }
+  .artifact-nav-del:hover { color: var(--red); background: #fef2f2; }
+
   /* ── MAIN PANEL ── */
   main {
     flex: 1;
@@ -1260,22 +1279,65 @@ function toast(msg, type='') {
 }
 
 // ── PROJECTS ──
+// Track which projects are expanded in sidebar
+const expandedProjects = new Set();
+
+const ARTIFACT_ICONS = {
+  'project-plan': '📋', 'raci': '👥', 'workflow-diagram': '🔀',
+  'design-doc': '📐', 'requirements': '📝', 'traceability': '🔗',
+  'config-spec': '⚙', 'app-diagram': '🗂', 'integration-diagram': '🔌',
+  'access-control': '🔐', 'reporting-spec': '📊', 'notification-spec': '🔔'
+};
+
 function renderProjects() {
   const list = document.getElementById('projectList');
   if (!state.projects.length) {
-    list.innerHTML = '<div style="color:rgba(255,255,255,0.3);font-size:12px;padding:10px 12px">No projects yet</div>';
+    list.innerHTML = '<div style="color:var(--slate-light);font-size:12px;padding:10px 12px">No projects yet</div>';
     return;
   }
+  // Auto-expand the current project
+  if (state.currentProjectId) expandedProjects.add(state.currentProjectId);
+
   list.innerHTML = state.projects.map(p => {
     const active = p.id === state.currentProjectId ? ' active' : '';
-    const sessCount = (p.sessions || []).length;
     const icon = projTypeIcon(p.type);
-    return `<div class="project-item${active}" onclick="loadProject('${p.id}')">
+    const artifacts = p.artifacts || [];
+    const sessions = p.sessions || [];
+    const isExpanded = expandedProjects.has(p.id);
+    const chevron = artifacts.length ? (isExpanded ? '▾' : '▸') : '';
+
+    const artifactItems = isExpanded && artifacts.length ? artifacts.map(a => {
+      const aIcon = ARTIFACT_ICONS[a.type] || '📄';
+      const date = a.generatedAt ? new Date(a.generatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+      return `<div class="artifact-nav-item" onclick="openSavedArtifact('${p.id}','${a.id}')">
+        <span>${aIcon}</span>
+        <span class="artifact-nav-label">${a.meta.label}</span>
+        <span class="artifact-nav-date">${date}</span>
+        <button class="artifact-nav-del" onclick="deleteSavedArtifact('${p.id}','${a.id}',event)" title="Delete">×</button>
+      </div>`;
+    }).join('') : '';
+
+    return `<div class="project-item${active}" onclick="toggleProjectExpand('${p.id}')">
       <span class="proj-icon">${icon}</span>
       <span class="proj-name">${p.name}</span>
-      ${sessCount ? `<span class="proj-badge">${sessCount}</span>` : ''}
-    </div>`;
+      <span style="font-size:10px;color:var(--text-muted);margin-left:auto">${chevron}</span>
+      ${sessions.length ? `<span class="proj-badge">${sessions.length}</span>` : ''}
+    </div>${artifactItems}`;
   }).join('');
+}
+
+function toggleProjectExpand(projId) {
+  if (expandedProjects.has(projId)) {
+    // If already expanded and active, collapse; otherwise just load
+    if (state.currentProjectId === projId) {
+      expandedProjects.delete(projId);
+      renderProjects();
+      return;
+    }
+  } else {
+    expandedProjects.add(projId);
+  }
+  loadProject(projId);
 }
 
 function openNewProjectModal() {
@@ -2362,7 +2424,22 @@ async function generateArtifact(type) {
   try {
     const p = prompts[type];
     const rawResult = await callAI(p.sys, p.user, pdfDocs, 8000);
-    
+
+    // Save to project artifacts list
+    const proj = getProject();
+    proj.artifacts = proj.artifacts || [];
+    // Replace existing artifact of same type, or add new
+    const existingIdx = proj.artifacts.findIndex(a => a.type === type);
+    const artifactRecord = {
+      id: existingIdx >= 0 ? proj.artifacts[existingIdx].id : 'art_' + Date.now(),
+      type, raw: rawResult, meta,
+      generatedAt: new Date().toISOString()
+    };
+    if (existingIdx >= 0) proj.artifacts[existingIdx] = artifactRecord;
+    else proj.artifacts.push(artifactRecord);
+    save();
+    renderProjects(); // refresh sidebar to show new artifact
+
     state.currentArtifact = { type, raw: rawResult, meta };
     artModalTitle.textContent = meta.label;
     artModalBody.className = 'ai-output';
@@ -2383,6 +2460,47 @@ async function generateArtifact(type) {
     artModalBody.className = 'ai-output error';
     artModalBody.textContent = 'Error: ' + e.message;
   }
+}
+
+function openSavedArtifact(projId, artifactId) {
+  // Switch to the right project first if needed
+  if (state.currentProjectId !== projId) loadProject(projId);
+  const proj = state.projects.find(p => p.id === projId);
+  const artifact = (proj?.artifacts || []).find(a => a.id === artifactId);
+  if (!artifact) return toast('Artifact not found', 'error');
+
+  state.currentArtifact = { type: artifact.type, raw: artifact.raw, meta: artifact.meta };
+  const artModalTitle = document.getElementById('artModalTitle');
+  const artModalBody = document.getElementById('artModalBody');
+  const artDownloadBtn = document.getElementById('artDownloadBtn');
+
+  artModalTitle.textContent = artifact.meta.label;
+  artModalBody.className = 'ai-output';
+
+  if (['workflow-diagram','app-diagram','integration-diagram'].includes(artifact.type)) {
+    artModalBody.className = 'ai-output xml-preview';
+    artModalBody.textContent = artifact.raw;
+    artDownloadBtn.style.display = '';
+    artDownloadBtn.textContent = artifact.meta.downloadLabel;
+  } else if (['project-plan','raci','traceability','config-spec','access-control','reporting-spec','notification-spec'].includes(artifact.type)) {
+    artModalBody.textContent = artifact.raw;
+    artDownloadBtn.style.display = '';
+    artDownloadBtn.textContent = artifact.meta.downloadLabel;
+  } else {
+    artModalBody.textContent = artifact.raw;
+    artDownloadBtn.style.display = 'none';
+  }
+  openModal('artifactModal');
+}
+
+function deleteSavedArtifact(projId, artifactId, e) {
+  e.stopPropagation();
+  const proj = state.projects.find(p => p.id === projId);
+  if (!proj) return;
+  proj.artifacts = (proj.artifacts || []).filter(a => a.id !== artifactId);
+  save();
+  renderProjects();
+  toast('Artifact deleted');
 }
 
 function copyArtifact() {
