@@ -1177,13 +1177,27 @@ function init() {
 
 function save() {
   try {
-    localStorage.setItem('pi_state', JSON.stringify(state));
+    // Strip large binary data before saving — b64 PDF blobs are kept in memory
+    // only for the current session; they cannot be restored from localStorage anyway
+    // since they'd blow the 5MB quota immediately on any real document.
+    const stateToSave = {
+      ...state,
+      currentArtifact: null, // never persist artifact output — too large
+      projects: state.projects.map(proj => ({
+        ...proj,
+        documents: (proj.documents || []).map(doc => {
+          const { b64, ...rest } = doc; // strip base64 PDF data
+          return rest;
+        })
+      }))
+    };
+    localStorage.setItem('pi_state', JSON.stringify(stateToSave));
     updateStorageIndicator();
     return true;
   } catch(e) {
     console.error('Save failed:', e);
     if (e.name === 'QuotaExceededError' || e.code === 22) {
-      toast('Storage limit reached — large PDFs may need to be removed. Your latest change was NOT saved.', 'error');
+      toast('Storage limit reached — try removing documents from projects. Your latest change was NOT saved.', 'error');
     } else {
       toast('Save failed: ' + e.message, 'error');
     }
@@ -1927,9 +1941,8 @@ async function processFiles(files) {
     let content = '';
     try {
       if (ext === 'pdf') {
-        content = '[PDF — will be sent to AI as binary for analysis]';
         const b64 = await fileToBase64(file);
-        proj.documents.push({ id: 'd_' + Date.now(), name: file.name, type: 'pdf', size: file.size, content: '', b64, addedAt: new Date().toISOString() });
+        proj.documents.push({ id: 'd_' + Date.now(), name: file.name, type: 'pdf', size: file.size, content: '', b64, sessionOnly: true, addedAt: new Date().toISOString() });
       } else if (ext === 'docx' || ext === 'doc') {
         const ab = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer: ab });
@@ -1985,10 +1998,13 @@ function renderDocuments() {
   const icons = { pdf: '📄', docx: '📝', doc: '📝', vtt: '🎙', txt: '📃', xlsx: '📊', xls: '📊', csv: '📊' };
   list.innerHTML = docs.map(d => {
     const size = d.size < 1024 ? d.size + ' B' : d.size < 1024*1024 ? Math.round(d.size/1024) + ' KB' : Math.round(d.size/1024/1024*10)/10 + ' MB';
+    const sessionWarning = d.sessionOnly && !d.b64
+      ? `<span title="PDF binary is not saved between sessions — re-upload to use with AI" style="font-size:10px;font-weight:600;color:var(--yellow);background:#fef9c3;border:1px solid #fde68a;padding:1px 6px;border-radius:8px;margin-left:4px">⚠ Re-upload to use AI</span>`
+      : (d.type === 'pdf' ? `<span style="font-size:10px;color:var(--text-muted);margin-left:4px">✓ loaded this session</span>` : '');
     return `<div class="doc-item">
       <div class="doc-icon">${icons[d.type] || '📎'}</div>
       <div class="doc-info">
-        <div class="doc-name">${d.name}</div>
+        <div class="doc-name">${d.name}${sessionWarning}</div>
         <div class="doc-meta">${d.type.toUpperCase()} · ${size} · Added ${new Date(d.addedAt).toLocaleDateString()}</div>
       </div>
       <div class="doc-actions">
